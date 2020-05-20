@@ -2,44 +2,7 @@ import numpy as np
 #from src.model.williams_otto import Reactor 
 #from gekko import GEKKO
 import matplotlib.pyplot as plt
-from scipy.integrate import odeint
-
-def process_equations(w, t, x, k):            
-        #eff = 0.1
-        split = 0.5
-        pho = 1
-        
-        ma, mb, mc, me, mg, mp = w
-        Fa, Fb, Tr = x
-        m = ma + mb + mc + me + mg + mp
-        
-        if(t > 3):
-           Tr = 500
-
-        if(t > 6):
-           Tr = 600
-
-        Fr = Fa + Fb
-
-        V = m / pho
-        #eta = 0.0
-        #mu = (ma + mb)/ V
-        #mu = 129.5
-
-        
-        k1 = 1.6599*(10**6)*np.exp(-6666.7/Tr)
-        k2 = 7.2117*(10**8)*np.exp(-8333.3/Tr)
-        k3 = 2.6745*(10**12)*np.exp(-11111/Tr)
-
-        df = [Fa - Fr * ma / m - k1 * ma * mb / V,
-            Fb - Fr * mb / m - (k1 * ma * mb / V) - (k2 * mb * mc / V),
-            (2*k1 * ma * mb / V) - (Fr*mc/m) - (2*k2 * mb* mc / V) - (k3*mc*mp/V),
-            (2*k2 * mb* mc / V) - (Fr * me / m),
-             (1.5 * k3 * mc * mp / V) - (Fr * mg / m),
-            (k2*mb*mc / V) -(Fr*mp/m) -(0.5 * k3 * mc *mp / V)
-           ]
-
-        return df
+from scipy.integrate import odeint, solve_ivp
 
 def r_to_c(r):
    return (r - 491.67) * 5 / 9 
@@ -47,14 +10,13 @@ def r_to_c(r):
 def c_to_r(c):
    return c * 9 /5 + 491.67
 
-def process_equations_conc(w, t, controller):            
+def process_equations_conc(w, t, controller, s):            
    Xa, Xb, Xc, Xe, Xg, Xp = w
-   Fa, Fb, Tr = controller(w, t)
-
+   Fa, Fb, Tr = c.control(w, s.last_rates())
    Fr = Fa + Fb #kg/s
 
    Vr = 92.8 #ft*3
-   
+
    k1 = 1.6599*(10**6)*np.exp(-12000/Tr) #s^-1
    k2 = 7.2117*(10**8)*np.exp(-15000/Tr) #s^-1
    k3 = 2.6745*(10**12)*np.exp(-20000/Tr) #s^-1
@@ -67,48 +29,66 @@ def process_equations_conc(w, t, controller):
       (k2* Xb * Xc * Vr) -(Fr* Xp) -(0.5 * k3 * Xc *Xp * Vr)
       ]
 
+   s.save(df)
+
    return df
 
-def process_equations_aprox(w, t, controller):            
-   Xa, Xb, Xc, Xe, Xg, Xp = w
-   Fa, Fb, Tr = controller(w, t)
+class Saver:
+   def __init__(self):
+      self.rates = []
 
-   Fr = Fa + Fb #kg/s
-
-   Vr = 92.8 #ft*3
+   def save(self, d):
+       self.rates.append(d)
    
-   k1 = 1.6599*(10**6)*np.exp(-12000/Tr) #s^-1
-   k2 = 7.2117*(10**8)*np.exp(-15000/Tr) #s^-1
-   k3 = 2.6745*(10**12)*np.exp(-20000/Tr) #s^-1
+   def last_rates(self):
+      if(len(self.rates) > 0):
+         return self.rates[-1]
+      return None
 
-   df = [Fa - Fr * Xa - k1 * Xa * Xb * Vr,
-      Fb - Fr * Xb - (k1 * Xa * Xb * Vr) - (k2 * Xb * Xc * Vr),
-      (2*k1 * Xa * Xb * Vr) - (Fr * Xc) - (2*k2 * Xb* Xc * Vr) - (k3 * Xc* Xp *Vr),
-      (2*k2 * Xb* Xc * Vr) - (Fr * Xe),
-         (1.5 * k3 * Xc * Xp * Vr) - (Fr * Xg),
-      (k2* Xb * Xc * Vr) -(Fr* Xp) -(0.5 * k3 * Xc *Xp * Vr)
-      ]
+class Controller:
+   def __init__(self, setpoints, Fa, Fb, Tr):
+      self.setpoints = setpoints
+      self.Fa = Fa
+      self.Fb = Fb
+      self.Tr = Tr
+      self.ub = []
+      self.lb = []
+      self.results = []
 
-   return df
+   def control(self, X, dX):
+      if dX is not None:
+         dXa, dXb, dXc, dXe, dXg, dXp = dX
+         Xa, Xb, Xc, Xe, Xg, Xp = X
+         spa, spb, spc, spe, spg, spp = self.setpoints
 
-def controller(X, t):
-   x = [2, 4, c_to_r(89)] #Fa [kg/s], Fb [kg/s], Tr [Rankine degrees]
-   if(t > 2):
-      x = [1, 4, c_to_r(70)]
-
-   if(t > 3):
-      x = [2, 3, c_to_r(100)]
-
-   if(t > 4):
-      x = [0.5, 4, c_to_r(50)]
-
-
-   return x
+         if(spa > 0):
+            if(Xa > spa):
+               if(dXa > 0):
+                  self.Fb = self.Fb * 1.05
+               if(np.abs(dXa) < 0.001):
+                  self.Fb = min(self.Fb + 0.1, 7)
+                  self.Tr = max(self.Tr - 1, 70)
+            else:
+               if(dXa < 0):
+                  self.Fb = self.Fb * 0.95
+               if(np.abs(dXa) < 0.001):
+                  self.Fb = max(self.Fb - 0.1, 3)
+                  self.Tr = min(self.Tr + 1, 110)
+            
+         if(spg > 0):
+            if(Xg > spg):
+               if(dXg > 0):
+                  self.Tr = max(0.95 * self.Tr, 70)
+            else:
+               if(dXg < 0):
+                  self.Tr = min(1.05 * self.Tr, 100)
+      self.results.append([self.Fa, self.Fb, c_to_r(self.Tr)])
+      return [self.Fa, self.Fb, c_to_r(self.Tr)]
 
 # ODE solver parameters
-abserr = 1.0e-12
-relerr = 1.0e-8
-stoptime = 5.0
+abserr = 1.0e-8
+relerr = 1.0e-6
+stoptime = 10.0
 numpoints = 200
 
 # Create the time samples for the output of the ODE solver.
@@ -117,11 +97,13 @@ numpoints = 200
 t = [stoptime * float(i) / (numpoints - 1) for i in range(numpoints)]
 
 # Pack up the parameters and initial conditions:
-w0 = [0.9, 0.1, 0, 0, 0, 0]
-k = np.zeros_like(t)
-
+w0 = [0.5, 0.5, 0, 0, 0, 0]
 # Call the ODE solver.
-wsol = odeint(process_equations_conc, w0, t, args=(controller,),
+
+
+s = Saver()
+c = Controller([0.12, -1, -1, -1, 0.08, -1], 2, 4, 90)
+wsol = odeint(process_equations_conc, w0, t, args=(c, s),
               atol=abserr, rtol=relerr)
 
 plt.figure()
