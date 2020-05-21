@@ -1,5 +1,6 @@
 import numpy as np
 from gekko import GEKKO
+import json
 
 ## Forbes, J. F., & Marlin, T. E. (1996). 
 # Design cost: a systematic approach to technology selection for model-based real-time optimization systems.
@@ -20,52 +21,14 @@ class Reactor:
         #self.Fa = 1.8725
         pass
 
-        
-    ## Gets the reaction rate
-    ## k = a*e^(-b/Tr)
-    def getK(self, Tr):
-        return np.multiply(self.a, np.exp(-self.b/Tr))
+    def r_to_c(self, r):
+        return (r - 491.67) * 5 / 9 
 
-    ## Gets the parameter vector
-    def getBeta(self):
-        return np.array([self.a.reshape(-1,1), self.b.reshape(-1,1)])
+    def c_to_r(self,c):
+        return c * 9/5 + 491.67
     
-    ## Gets the cost value
-    def getCost(self, Fb, Xp, Xe, Fr = 0, Fa = 1.8725):
-        return np.dot(self.P , np.array([Xp*Fr, Xe*Fr, Fa, Fb]))
-
-    
-    def getApproximateModelConstraints(self, Tr, Fb):
-        Fr = self.Fa + Fb
-        k = self.getK(Tr)
-        
-        step = 1.0 #s
-        Xa = self.Fa * step / self.Vr
-        Xb = Fb * step / self.Vr
-
-        k1 = k[0]
-        k2 = k[1]
-        k3 = k[2]
-
-        Xp = (self.Fa - Fr*Xa -k1*self.Vr*Xa*(Xb^2)) / (k2*self.Vr*Xa*Xb)
-        Xe = (2*k1*self.Vr*Xa*(Xb^2)) / Fr
-        Xg = (3*k2*self.Vr*Xa*Xb*Xp) / Fr
-
-
-
-    
-    def getExactModelConstraints(self, Tr, Fb):
-        Fr = self.Fa + Fb
-        k = self.getK(Tr)
-
-        step = 1.0 #s
-        Xa = self.Fa * step / self.Vr
-        Xb = Fb * step / self.Vr
-
-        k1 = k[0]
-        k2 = k[1]
-        k3 = k[2]
- 
+    def k_to_r(self,k):
+        return self.c_to_r(k - 273.15)
 
     ## Gets the model in GEKKO format
     def getModel(self):
@@ -73,9 +36,9 @@ class Reactor:
         model = GEKKO()
        
         # manipulated variable
-        Fa = model.MV(value=10, lb=5, ub=15, name='Fa')
-        Fb = model.MV(value=20, lb=15, ub=25, name='Fb')
-        Tr = model.MV(value=580, lb=560, ub=600, name='Tr')
+        Fa = model.MV(value=1.8725, lb=1, ub=3, name='Fa')
+        Fb = model.MV(value=3.82, lb=2, ub=7, name='Fb')
+        Tr = model.MV(value=self.c_to_r(86), lb=self.c_to_r(80), ub=self.c_to_r(95), name='Tr')
 
         # MV allowed to change
         Fa.STATUS = 1
@@ -83,79 +46,70 @@ class Reactor:
         Tr.STATUS = 1
 
         #Fb.DCOST = 0.1 # smooth out gas pedal movement
-        #Fb.DMAX = 20   # slow down change of gas pedal
-
+        #Fb.DMAX = 50   # slow down change of gas pedal
 
         #Tr.DCOST = 0.001 # smooth out gas pedal movement
-        #Tr.DMAX = 1   # slow down change of gas pedal
+        #Tr.DMAX = 100   # slow down change of gas pedal
 
         # controlled variables
-        ma = model.CV(value=10.0, name='ma')
-        mb = model.CV(value=1.0, name='mb')
-        mc = model.CV(value=0.0, name='mc')
-        me = model.CV(value=0.0, name='me')
-        mp = model.CV(value=0.0, name='mp')
-        mg = model.CV(value=0.0, name='mg')
-        eta = model.CV(value=0.2, lb=0.0, ub=1.0, name='eta')
-        mu = model.CV(value=129.5, lb=100, ub=150, name='mu')
+        Xa = model.CV(value=0.5, name='Xa', lb=0, ub=1)
+        Xb = model.CV(value=0.5, name='Xb', lb=0, ub=1)
+        Xc = model.CV(value=0.0, name='Xc', lb=0, ub=1)
+        Xe = model.CV(value=0.0, name='Xe', lb=0, ub=1)
+        Xp = model.CV(value=0.0, name='Xp', lb=0, ub=1)
+        Xg = model.CV(value=0.0, name='Xg', lb=0, ub=1)
 
-        ma.STATUS = 1  # add the SP to the objective
-        ma.SP = 8     # set point
-        ma.TR_INIT = 1 # set point trajectory
-        ma.TAU = 10     # time constant of trajectory
+        Xa.STATUS = 1  # add the SP to the objective
+        Xa.SP = 0.4     # set point
+        #Xa.TR_INIT = 1 # set point trajectory
+        #Xa.TAU = 100     # time constant of trajectory
 
-        mg.STATUS = 1  # add the SP to the objective
-        mg.SP = 2     # set point
-        #mg.TR_INIT = 1 # set point trajectory
-        #mg.TAU = 10     # time constant of trajectory
+        #Xg.STATUS = 1  # add the SP to the objective
+        #Xg.SP = 0.05     # set point
+        #Xg.TR_INIT = 1 # set point trajectory
+        #Xg.TAU = 10     # time constant of trajectory
 
         # parameters
         # fixed
-        eff = model.Const(value=0.1)
         split = model.Const(value=0.5)
-        pho = model.Const(value=40) #800.923kg/m3 = 50lb/ft3
+        Vr = model.Const(value=2.5)
 
         # variable
-        k1 = model.Intermediate(5.9755*(10^9)*model.exp(-12000/Tr)/pho, name='k1') #m3/kg*h
-        k2 = model.Intermediate(2.5962*(10^12)*model.exp(-15000/Tr)/pho, name='k2') #m3/kg*h
-        k3 = model.Intermediate(9.6283*(10^15)*model.exp(-20000/Tr)/pho, name='k3') #m3/kg*h
-        m = model.Intermediate(ma + mb + mc + me + mp + mg, name='m')
-        V = model.Intermediate(m / pho, name='V')
+        k1 = model.Intermediate(1.6599*(10**6)*model.exp(-12000/Tr), name='k1') #m3/kg*h
+        k2 = model.Intermediate(7.2117*(10**8)*model.exp(-15000/Tr), name='k2') #m3/kg*h
+        k3 = model.Intermediate(2.6745*(10**12)*model.exp(-20000/Tr), name='k3') #m3/kg*h
+        Fr = model.Intermediate(Fa + Fb, name='Fr') #Kg/s
 
         # Process model
-        model.Equation(ma.dt() == Fa + ((1-eta)*mu - mu) * ma / m - k1 * ma * mb / V)
-        model.Equation(mb.dt() == Fb + ((1-eta)*mu - mu) * mb / m - (k1 * ma * mb / V) - (k2 * mb* mc / V))
-        model.Equation(mc.dt() == ((1-eta)*mu - mu) * mc / m + (2*k1 * ma * mb / V) - (2*k2 * mb* mc / V) - (k3*mc*mp/V))
-        model.Equation(me.dt() == ((1-eta)*mu - mu) * me / m + (2*k2 * mb* mc / V))
-        model.Equation(mp.dt() == (eff * (1-eta)* mu * me / m) - mu*mp/m + k2*mb*mc / V - split * k3*mc*mp/V)
-        model.Equation(mg.dt() == -mu*mg/m + (1+split)*k3*mc*mp/V)
-        #m.Equation(m == ma + mb + mc + me + mp + mg)        
-
+        model.Equation(Xa.dt() == Fa - Fr * Xa - k1 * Xa * Xb * Vr)
+        model.Equation(Xb.dt() == Fb - Fr * Xb - (k1 * Xa * Xb * Vr) - (k2 * Xb * Xc * Vr))
+        model.Equation(Xc.dt() == (2*k1 * Xa * Xb * Vr) - (Fr * Xc) - (2*k2 * Xb* Xc * Vr) - (k3 * Xc* Xp *Vr))
+        model.Equation(Xe.dt() == (2*k2 * Xb* Xc * Vr) - (Fr * Xe))
+        model.Equation(Xg.dt() ==  ((1.5) * k3 * Xc * Xp * Vr) - (Fr * Xg))
+        model.Equation(Xp.dt() == (k2* Xb * Xc * Vr) -(Fr* Xp) -(0.5 * k3 * Xc *Xp * Vr))
+        
+        # Objective
+        model.Obj(25.2*Fr + 0.5712*Fr*Xp*Xe -1.68*Fa - 2.52*Fb)
+        
         return model
 
+    def solveMPC(self, model):
+        model.time = np.linspace(0,2,100)
+        model.options.CV_TYPE = 2 # squared error
+        model.options.IMODE = 6 # control
 
-    def getModelODE(self, w, t, p):        
+        model.solve()
+
+        with open(model.path+'//results.json') as f:
+            results = json.load(f)
         
-        eff = 0.1
-        split = 0.5
-        pho = 40 #800.923kg/m3 = 50lb/ft3
+        return results
+
+    def solveRTO(self, model):
+        model.options.IMODE = 3 # control
+        model.solve()
+
+        with open(model.path+'//results.json') as f:
+            results = json.load(f)
         
-        ma, mb, mc, me, mp, mg, Fa, Fb, Tr  = w
-        m = ma + mb + mc + me + mp + mg
-        V = m / pho
-        eta = 0.2
-        mu = 129.5
-
-        k1 = 5.9755*(10^9)*np.exp(-12000/Tr)/pho
-        k2 = 2.5962*(10^12)*np.exp(-15000/Tr)/pho
-        k3 = 9.6283*(10^15)*np.exp(-20000/Tr)/pho
-
-        f = [Fa + ((1-eta)*mu - mu) * ma / m - k1 * ma * mb / V,
-            Fb + ((1-eta)*mu - mu) * mb / m - (k1 * ma * mb / V) - (k2 * mb* mc / V),
-            ((1-eta)*mu - mu) * mc / m + (2*k1 * ma * mb / V) - (2*k2 * mb* mc / V) - (k3*mc*mp/V),
-            (eff * (1-eta)* mu * me / m) - mu*mp/m + k2*mb*mc / V - split * k3*mc*mp/V,
-            -mu*mg/m + (1+split)*k3*mc*mp/V]
-
-        return f
-
-
+        return results
