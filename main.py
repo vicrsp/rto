@@ -1,53 +1,47 @@
 import numpy as np
 from src.model.williams_otto import Reactor 
+from src.model.semi_batch import SemiBatchReactor 
 from gekko import GEKKO
 import json
 import matplotlib.pyplot as plt
 plt.close('all')
 
-r = Reactor()
+r = SemiBatchReactor()
 m = r.getModel()
 
 # general options
-results = r.solveMPC(m)
-r.solveRTO(m)
+#results = r.solveMPC(m)
+results = r.solveIVP()
 
-plt.figure()
-plt.plot(results['time'], results['tr'])
-plt.legend(['tr'])
-
-plt.figure()
-plt.plot(results['time'], results['fa'])
-plt.plot(results['time'], results['fb'])
-plt.legend(['fa','fb'])
+plt.plot(results.t, results.y[0])
+plt.plot(results.t, results.y[1])
+plt.plot(results.t, results.y[2])
+plt.plot(results.t, results.y[3])
+plt.legend(['Ca','Cb','Cc','Cd'])
 plt.show()
 
 plt.figure()
-plt.plot(results['time'], results['xa'])
-plt.plot(results['time'], results['xb'])
-plt.plot(results['time'], results['xc'])
-plt.plot(results['time'], results['xe'])
-plt.plot(results['time'], results['xp'])
-plt.plot(results['time'], results['xg'])
-#plt.plot(results['time'], results['mu'])
-plt.legend(['xa','xb','xc','xe','xp','xg'])
+plt.plot(results.t, results.y[4])
+plt.legend('V')
 plt.show()
+#r.solveRTO(m)
 
-plt.figure()
-plt.plot(results['time'], results['xa'])
-plt.plot(results['time'], results['xa.tr'])
-plt.plot(results['time'], results['xa.sp'])
-plt.legend(['xa','tr','sp'])
-plt.show()
+# fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5,1,sharex=True)
+# ax1.plot(results['time'], results['ca'])
+# ax1.legend(['Ca'])
 
-plt.figure()
-plt.plot(results['time'], results['xg'])
-plt.plot(results['time'], results['xg.tr'])
-plt.plot(results['time'], results['xg.sp'])
-plt.legend(['xg','tr','sp'])
-plt.show()
+# ax2.plot(results['time'], results['cb'])
+# ax2.legend(['Cb'])
 
+# ax3.plot(results['time'], results['cc'])
+# ax3.legend(['Cc'])
 
+# ax4.plot(results['time'], results['cd'])
+# ax4.legend(['Cd'])
+
+# ax5.plot(results['time'], results['f'])
+# ax5.legend(['F'])
+# plt.show()
 
 
 
