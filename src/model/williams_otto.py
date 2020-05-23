@@ -36,33 +36,41 @@ class Reactor:
         model = GEKKO()
        
         # manipulated variable
-        Fa = model.MV(value=1.8725, lb=1, ub=3, name='Fa')
-        Fb = model.MV(value=3.82, lb=2, ub=7, name='Fb')
+        Fa = model.MV(value=1.8725, lb=1.5, ub=3, name='Fa')
+        Fb = model.MV(value=6.9, lb=4, ub=7, name='Fb')
         Tr = model.MV(value=self.c_to_r(86), lb=self.c_to_r(80), ub=self.c_to_r(95), name='Tr')
 
         # MV allowed to change
-        Fa.STATUS = 1
+        Fa.STATUS = 0
         Fb.STATUS = 1
         Tr.STATUS = 1
 
-        #Fb.DCOST = 0.1 # smooth out gas pedal movement
-        #Fb.DMAX = 50   # slow down change of gas pedal
+        #Fa.DCOST = 0.01 # smooth out gas pedal movement
+        Fa.DMAX = 0.1   # slow down change of gas pedal
 
-        #Tr.DCOST = 0.001 # smooth out gas pedal movement
-        #Tr.DMAX = 100   # slow down change of gas pedal
+        #Fb.DCOST = 0.01 # smooth out gas pedal movement
+        Fb.DMAX = 0.1   # slow down change of gas pedal
+
+        Tr.DCOST = 0.01 # smooth out gas pedal movement
+        Tr.DMAX = 10   # slow down change of gas pedal
 
         # controlled variables
-        Xa = model.CV(value=0.5, name='Xa', lb=0, ub=1)
-        Xb = model.CV(value=0.5, name='Xb', lb=0, ub=1)
+        Xa = model.CV(value=0.1, name='Xa', lb=0, ub=1)
+        Xb = model.CV(value=0.9, name='Xb', lb=0, ub=1)
         Xc = model.CV(value=0.0, name='Xc', lb=0, ub=1)
         Xe = model.CV(value=0.0, name='Xe', lb=0, ub=1)
         Xp = model.CV(value=0.0, name='Xp', lb=0, ub=1)
         Xg = model.CV(value=0.0, name='Xg', lb=0, ub=1)
 
         Xa.STATUS = 1  # add the SP to the objective
-        Xa.SP = 0.4     # set point
-        #Xa.TR_INIT = 1 # set point trajectory
-        #Xa.TAU = 100     # time constant of trajectory
+        Xa.SP = 0.2     # set point
+        Xa.TR_INIT = 1 # set point trajectory
+        Xa.TAU = 1     # time constant of trajectory
+
+        Xb.STATUS = 1  # add the SP to the objective
+        Xb.SP = 0.8     # set point
+        #Xb.TR_INIT = 1 # set point trajectory
+        #Xb.TAU = 1     # time constant of trajectory
 
         #Xg.STATUS = 1  # add the SP to the objective
         #Xg.SP = 0.05     # set point
@@ -72,7 +80,7 @@ class Reactor:
         # parameters
         # fixed
         split = model.Const(value=0.5)
-        Vr = model.Const(value=2.5)
+        Vr = model.Const(value=90)
 
         # variable
         k1 = model.Intermediate(1.6599*(10**6)*model.exp(-12000/Tr), name='k1') #m3/kg*h
@@ -94,7 +102,7 @@ class Reactor:
         return model
 
     def solveMPC(self, model):
-        model.time = np.linspace(0,2,100)
+        model.time = np.linspace(0,10,200)
         model.options.CV_TYPE = 2 # squared error
         model.options.IMODE = 6 # control
 
