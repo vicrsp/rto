@@ -1,5 +1,6 @@
 Data/
 Output/
+figures/
 *.asv
 .ipynb_checkpoints/
 

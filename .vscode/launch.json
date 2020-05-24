@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -17,6 +18,20 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/bin/run_optimization.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Run Grid Search",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/bin/run_grid_search.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Run Calibration",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/bin/run_calibration.py",
             "console": "integratedTerminal"
         }
     ]

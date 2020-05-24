@@ -21,7 +21,7 @@ class ProfileOptimizer:
         self.model = model
 
         results = differential_evolution(func=self.EvalObjective, bounds=self.bounds, args=(model,), 
-        disp=True, popsize=10, seed=8754, callback=self.SaveResults)
+        disp=False, popsize=10, seed=8754, callback=self.SaveResults)
         return results.fun, results.x, self.xk
 
     def SaveResults(self, xk, convergence):
@@ -60,7 +60,7 @@ class ModelParameterOptimizer:
         self.input = input
 
         results = differential_evolution(func=self.EvalObjective, bounds=self.bounds, args=(model,input), 
-        disp=True, popsize=50, seed=8754, callback=self.SaveResults)
+        disp=False, popsize=50, seed=8754, callback=self.SaveResults)
         return results.fun, results.x, self.xk
     
     def SaveResults(self, xk, convergence):

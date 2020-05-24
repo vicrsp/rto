@@ -31,13 +31,29 @@ class SemiBatchReactor:
             for i, result in enumerate(sim_results.y):
                 val = result[idx]
                 if(noise == True):
-                    sample.append(val + np.random.normal(0,0.05*val))
+                    sample.append(val + np.random.normal(0,0.1*val))
                 else:
                     sample.append(val)
 
             samples[value] = sample
 
         return samples
+
+    def GetSimulatedSamples(self, input, x, samples):
+        k1, k2 = x
+        self.SetParameters(k1, k2)
+        sim_results = self.Simulate(input)
+
+        sim_values = {}
+        for time in samples.keys():
+            idx = find_nearest_idx(sim_results.t, time*self.stoptime)
+            sim_value = []
+            for i, result in enumerate(sim_results.y):
+                sim_value.append(result[idx])
+            
+            sim_values[time] = sim_value
+        
+        return sim_values
 
     def GetSSE(self, input, x, samples):
         k1, k2 = x
