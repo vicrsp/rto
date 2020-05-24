@@ -3,6 +3,7 @@ Output/
 figures/
 *.asv
 .ipynb_checkpoints/
+.vscode/.ropeproject
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

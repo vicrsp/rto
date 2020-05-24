@@ -21,9 +21,9 @@ model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
 # Get the fixed model inputs
 # TODO: read from DB
 opt = ProfileOptimizer()
-_, F, _ = opt.Run(model)
-samples = model_ideal.GetSamples(F, [0.95,0.97,0.99], noise=False)
-samples_noisy = model_ideal.GetSamples(F, [0.95,0.97,0.99], noise=True)
+_, F, _ = opt.run(model)
+samples = model_ideal.get_samples(F, [0.95,0.97,0.99], noise=False)
+samples_noisy = model_ideal.get_samples(F, [0.95,0.97,0.99], noise=True)
 
 grid, results, pareto = gs.run(model, F, samples)
 grid_noisy, results_noisy, pareto_noisy = gs.run(model, F, samples_noisy)

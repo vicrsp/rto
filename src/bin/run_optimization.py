@@ -14,21 +14,21 @@ from model.semi_batch import SemiBatchReactor
 from optimization.utils import build_F
         
 
-opt = ProfileOptimizer()
+opt = ProfileOptimizer(ub = [0.002,250,0.002,250,0.002], lb=[0.0,0,0,0,0])
 cal = ModelParameterOptimizer()
 
 model_ideal = SemiBatchReactor()
 model_aprox = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
 
-f_ideal, x_ideal, results_ideal = opt.Run(model_ideal)
-f_aprox, x_aprox, results_aprox = opt.Run(model_aprox)
+f_ideal, x_ideal, results_ideal = opt.run_obj_b(model_ideal)
+f_aprox, x_aprox, results_aprox = opt.run_obj_b(model_aprox)
 
-print('Fobj---> Ideal: {}, Approx: {}'.format(1/f_ideal, 1/f_aprox))
+print('Fobj---> Ideal: {}, Approx: {}'.format(-f_ideal, -f_aprox))
 print('Xopt---> \n Ideal: {} \n Approx: {}'.format(x_ideal, x_aprox))
 
 # Simulate the solution found
-sim_ideal = model_ideal.Simulate(x_ideal)
-sim_aprox = model_aprox.Simulate(x_aprox)
+sim_ideal = model_ideal.simulate(x_ideal)
+sim_aprox = model_aprox.simulate(x_aprox)
 
 # Build the input signal F
 F_ideal = build_F(sim_ideal.t, x_ideal)
@@ -60,7 +60,6 @@ plt.figure()
 plt.plot(sim_ideal.t, sim_ideal.y[4], 'b')
 plt.plot(sim_aprox.t, sim_aprox.y[4], 'r--')
 plt.legend(['V(ideal)','V(aprox)'])
-plt.show()
 
 plt.figure()
 plt.plot(sim_ideal.t, F_ideal, 'b')

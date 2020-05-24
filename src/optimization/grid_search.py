@@ -43,7 +43,7 @@ class ParameterGridSearch:
         return grid, results, results_pareto
 
     def eval(self, x, model, input, samples):
-        sim_values = model.GetSimulatedSamples(input, x, samples)
+        sim_values = model.get_simulated_samples(input, x, samples)
         # Weight vector
         w = np.ones_like(input)
 
@@ -57,7 +57,7 @@ class ParameterGridSearch:
         return error
 
     def eval_pareto(self, x, model, input, samples):
-        sim_values = model.GetSimulatedSamples(input, x, samples)
+        sim_values = model.get_simulated_samples(input, x, samples)
         # Weight vector
         w = np.ones_like(list(samples.values())[0])
 
