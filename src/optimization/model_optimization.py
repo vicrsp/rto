@@ -51,21 +51,33 @@ class ModelParameterOptimizer:
         self.bounds = Bounds(lb, ub)
 
     def Run(self, model, input, samples, x0 = [0.053, 0.128]):
-        self.xk.append(x0)
-        f0 = model.GetSSE(input, x0, samples)
-        self.fxk.append(f0)
         
         self.model = model
         self.samples = samples
         self.input = input
 
+        self.xk.append(x0)
+        f0 = self.EvalObjective(x0, model, input)
+        self.fxk.append(f0)
+        
         results = differential_evolution(func=self.EvalObjective, bounds=self.bounds, args=(model,input), 
         disp=False, popsize=50, seed=8754, callback=self.SaveResults)
         return results.fun, results.x, self.xk
     
     def SaveResults(self, xk, convergence):
         self.xk.append(xk)
-        self.fxk.append(self.model.GetSSE(self.input, xk, self.samples))
+        self.fxk.append(self.EvalObjective(xk, self.model, self.input))
 
     def EvalObjective(self, x, model, input):
-        return model.GetSSE(input, x, self.samples)
+        sim_values = model.GetSimulatedSamples(input, x, self.samples)
+        # Weight vector
+        w = np.ones_like(input)
+
+        # SSE
+        error = 0
+        for time, sim_value in sim_values.items():
+            meas_value = self.samples[time]
+            for i in range(len(meas_value)):
+                if(i > 0 & i < 4):
+                    error = error + w[i]*((meas_value[i] - sim_value[i])/meas_value[i])**2
+        return error

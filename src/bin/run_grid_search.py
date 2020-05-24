@@ -14,7 +14,7 @@ from optimization.grid_search import ParameterGridSearch
 from optimization.model_optimization import ProfileOptimizer
 from model.semi_batch import SemiBatchReactor
 
-gs = ParameterGridSearch(lb=[0.15, 0.15], ub=[0.5, 0.6], N = 50)
+gs = ParameterGridSearch(lb=[0.15, 0.15], ub=[0.5, 0.6], N = 10)
 model_ideal = SemiBatchReactor()
 model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
 
@@ -25,8 +25,8 @@ _, F, _ = opt.Run(model)
 samples = model_ideal.GetSamples(F, [0.95,0.97,0.99], noise=False)
 samples_noisy = model_ideal.GetSamples(F, [0.95,0.97,0.99], noise=True)
 
-grid, results = gs.run(model, F, samples)
-grid_noisy, results_noisy = gs.run(model, F, samples_noisy)
+grid, results, pareto = gs.run(model, F, samples)
+grid_noisy, results_noisy, pareto_noisy = gs.run(model, F, samples_noisy)
 
 # Plot the grid search results
 for key in grid.keys():
