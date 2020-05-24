@@ -87,7 +87,7 @@ class ProfileOptimizer:
 
 
 class ModelParameterOptimizer:
-    def __init__(self, lb=[0.01, 0.01], ub=[0.5,0.5]):
+    def __init__(self, lb=[0.0011, 0.0026], ub=[0.212,0.5120]):
         self.xk = []
         self.fxk = []
         self.bounds = Bounds(lb, ub)

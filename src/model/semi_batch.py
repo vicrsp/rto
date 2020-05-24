@@ -15,7 +15,7 @@ class SemiBatchReactor:
         self.y0 = y0
         self.k1, self.k2, self.k3, self.k4, self.Cb_in = k
         self.stoptime = 250
-        self.numpoints = 200
+        self.numpoints = 100
 
     def set_parameters(self, k1, k2):
         self.k1 = k1
