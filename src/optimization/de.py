@@ -34,7 +34,7 @@ class DifferentialEvolution:
         for sol in population:
             cost, g = self.eval_objective(sol)
 
-            if(cost > self.best_objective):
+            if(cost < self.best_objective):
                 self.best_objective = cost
                 self.best_solution = sol
 
@@ -66,7 +66,7 @@ class DifferentialEvolution:
             r3 = np.random.randint(0, self.population_size)
             while(r3 == r1 | r3 == r2):
                 r3 = np.random.randint(0, self.population_size)
-            return r2, r3, self.population[r2] - self.population[r3]
+            return self.population[r2] - self.population[r3]
         else:
             raise ValueError(
                 'd={} is not implemented!'.format(self.d))
@@ -112,8 +112,7 @@ class DifferentialEvolution:
         cost, g = self.fobj(x)
 
         # handle constraints with penalty method
-        g = np.maximum(g, np.zeros_like(g))
-        cost = cost + 1000 * np.sum(g)
+        cost = cost + 10000 * np.sum(np.maximum(g, np.zeros_like(g)))
 
         return cost, g
 
@@ -121,7 +120,7 @@ class DifferentialEvolution:
         survivors = []
         for i in range(self.population_size):
             u_i = self.validate_bounds(u[i])
-            fu = self.eval_objective(u_i)
+            fu, _ = self.eval_objective(u_i)
             # TODO: implement the constraint handling from Lampinen 2002 here
             if(fu <= fx[i]):
                 survivors.append(u_i)
@@ -146,5 +145,9 @@ class DifferentialEvolution:
             u = self.recombine(v, self.population)
             self.population = self.select_survivors(
                 u, self.population, fitness)
+
+            if(debug == True):
+                print('Best fobj: {}'.format(self.best_objective))
+                print('Best sol: {}'.format(self.best_solution))
 
         return self.best_objective, self.best_solution
