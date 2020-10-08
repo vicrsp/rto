@@ -13,9 +13,10 @@ from optimization.de import DifferentialEvolution
 # create a test function
 def f_test(x):
     fx = (x[0] - 3) ** 2 + (x[1] - 2) ** 2
-    g = x[0] - x[1]  # x2 > x1
+    g1 = x[0] - x[1]  # g1: x2 > x1
+    g2 = 3 - x[0]  # g1: x1 > 3
 
-    return fx, g
+    return fx, [g1, g2]
 
 def multi_f(x):
 	## Himmel Blau function!
@@ -26,7 +27,7 @@ def multi_f(x):
 	sum_ = pow((pow(x[0],2) + x[1] - 11),2) + pow((pow(x[1],2) + x[0] - 7),2)
 	g = 26.0 - pow((x[0]-5.0), 2) - pow(x[1],2)#constraints.
 
-	return sum_, g
+	return sum_, [g]
 
-de = DifferentialEvolution(multi_f, [-10, -10], [10, 10], max_generations=500)
+de = DifferentialEvolution(f_test, [-10, -10], [10, 10], max_generations=500)
 de.run()

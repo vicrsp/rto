@@ -42,12 +42,13 @@ class DifferentialEvolution:
             pop_g.append(g)
 
         pop_fobj = np.array(pop_fobj)
+        pop_g = np.asarray(pop_g)
 
         self.fobj_evals = self.fobj_evals + pop_fobj.shape[0]
         self.population_fobj = pop_fobj
         self.population_g = np.asarray(pop_g)
 
-        return pop_fobj
+        return pop_fobj, pop_g
 
     def select_base_vector(self):
         if(self.base == 'rand'):
@@ -108,21 +109,31 @@ class DifferentialEvolution:
         return np.asarray(xc)
 
     def eval_objective(self, x):
-        # truncate x
         cost, g = self.fobj(x)
 
         # handle constraints with penalty method
-        cost = cost + 10000 * np.sum(np.maximum(g, np.zeros_like(g)))
+        #cost = cost + 10000 * np.sum(np.maximum(g, np.zeros_like(g)))
 
-        return cost, g
+        return cost, np.asarray(g)
 
-    def select_survivors(self, u, x, fx):
+    def select_survivors(self, u, x, fx, gx):
         survivors = []
         for i in range(self.population_size):
             u_i = self.validate_bounds(u[i])
-            fu, _ = self.eval_objective(u_i)
-            # TODO: implement the constraint handling from Lampinen 2002 here
-            if(fu <= fx[i]):
+            gx_i = gx[i]
+            fx_i = fx[i]
+            fu, gu = self.eval_objective(u_i)
+
+            is_valid = (fu <= fx_i)
+            # only use the rule for restricted problems
+            if(len(gu) > 0):
+                rule1 = np.all(gu <= 0) & np.all(gx_i <= 0) & (fu <= fx_i)
+                rule2 = np.all(gu <= 0) & np.any(gx_i > 0)
+                rule3 = np.any(gu > 0) & np.all(np.maximum(gu, np.zeros_like(
+                    gu)) <= np.maximum(gx_i, np.zeros_like(gx_i)))
+                is_valid = rule1 | rule2 | rule3
+
+            if(is_valid):
                 survivors.append(u_i)
             else:
                 survivors.append(x[i])
@@ -132,7 +143,7 @@ class DifferentialEvolution:
     def run(self, debug=True):
         self.initialize_population()
         for _ in range(self.max_generations):
-            fitness = self.evaluate_population_cost(self.population)
+            fobj, g = self.evaluate_population_cost(self.population)
             v = []
 
             for _ in range(self.population_size):
@@ -144,7 +155,7 @@ class DifferentialEvolution:
             v = np.asarray(v)
             u = self.recombine(v, self.population)
             self.population = self.select_survivors(
-                u, self.population, fitness)
+                u, self.population, fobj, g)
 
             if(debug == True):
                 print('Best fobj: {}'.format(self.best_objective))
