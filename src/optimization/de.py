@@ -34,7 +34,7 @@ class DifferentialEvolution:
         for sol in population:
             cost, g = self.eval_objective(sol)
 
-            if(cost < self.best_objective):
+            if((cost < self.best_objective) & (not np.any(g > 0))):
                 self.best_objective = cost
                 self.best_solution = sol
 
