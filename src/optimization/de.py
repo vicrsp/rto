@@ -2,7 +2,7 @@ import numpy as np
 
 
 class DifferentialEvolution:
-    def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=50, max_generations=100, de_type='rand/1/bin', callback=None):
+    def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=20, max_generations=100, de_type='rand/1/bin', callback=None):
         self.fobj = func
         self.lb = np.asarray(lb).reshape(1,-1)
         self.ub = np.asarray(ub).reshape(1,-1)
@@ -10,7 +10,7 @@ class DifferentialEvolution:
         self.max_generations = max_generations
         self.num_variables = len(lb)
         self.mutation_prob = mutation_prob
-        self.callback = None
+        self.callback = callback
         self.base, self.d, self.rec = de_type.split('/')
 
         self.norm_lb = self.normalize(self.lb).flatten()
@@ -176,9 +176,9 @@ class DifferentialEvolution:
             self.population = self.select_survivors(
                 u, self.population, fobj, g)
 
-            if(debug == True):
+            if((debug == True) & (self.best_objective != np.Infinity)):
                 print('Best fobj: {}'.format(self.best_objective))
                 print('Best sol: {}'.format(
                     self.denormalize(self.best_solution)))
 
-        return self.best_objective, self.denormalize(self.best_solution)
+        return self.best_objective, self.denormalize(self.best_solution).flatten()

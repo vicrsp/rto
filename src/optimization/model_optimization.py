@@ -38,7 +38,6 @@ class ProfileOptimizer:
 
         return fx, g
 
-
 class ModelParameterOptimizer:
     def __init__(self, lb=[0.0011, 0.0026], ub=[0.212, 0.5120]):
         self.lb = lb
@@ -65,7 +64,7 @@ class ModelParameterOptimizer:
         sim_values = self.model.get_simulated_samples(
             self.input, x, self.samples)
         # Weight vector
-        w = np.ones_like(input)
+        w = np.ones_like(self.input)
 
         # SSE
         error = 0

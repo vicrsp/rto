@@ -1,5 +1,4 @@
 import numpy as np
-from gekko import GEKKO
 import json
 from scipy.integrate import odeint, solve_ivp
 from optimization.utils import find_nearest_idx
