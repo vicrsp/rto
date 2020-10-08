@@ -29,5 +29,5 @@ def multi_f(x):
 
 	return sum_, [g]
 
-de = DifferentialEvolution(multi_f, [-5, -5], [5, 5], max_generations=500)
+de = DifferentialEvolution(multi_f, lb=[-5, -5], ub=[5, 5], max_generations=500)
 de.run()
