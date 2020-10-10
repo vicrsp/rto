@@ -19,7 +19,7 @@ from optimization.de import DifferentialEvolution
 from bussineslogic.rto_data import RTODataModel
 
 # Define general constants
-rto_runs = 10
+rto_runs = 30
 n_samples = 3
 initial_parameters = [0.053, 0.128]
 
@@ -64,24 +64,18 @@ for i in range(0, rto_runs):
 
     # Store the RTO iteration in the DB
     # Create runs
-    ro_id = md.create_run(rto_id, 'optimization', i, 'completed')
-    rc_id = md.create_run(rto_id, 'calibration', i, 'completed')
+    run_id = md.create_run(rto_id, i, 'completed')
     # Samples
-    md.save_samples(rc_id, samples)
+    md.save_samples(run_id, samples)
     # Parameters
-    md.save_parameters(ro_id, {'k1': k1, 'k2': k2})
-    md.save_parameters(
-        rc_id, {'k1': calibrated_parameters[0], 'k2': calibrated_parameters[1]})
+    md.save_parameters(run_id, {'k1_initial': k1, 'k2_initial': k2, 'k1_calibrated': calibrated_parameters[0], 'k2_calibrated': calibrated_parameters[1]})
     # Input data
     input_dict = {'F0': f_input[0], 'tm': f_input[1],
                   'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4]}
-    md.save_input_data(ro_id, input_dict)
-    md.save_input_data(rc_id, input_dict)
+    md.save_input_data(run_id, input_dict)
     # Results
-    rc_results_dict = {'error': calibration_error}
-    ro_results_dict = {'cost_function': -f_cost}
-    md.save_results(rc_id, rc_results_dict)
-    md.save_results(ro_id, ro_results_dict)
+    results_dict = {'error': calibration_error, 'cost_function': -f_cost}
+    md.save_results(run_id, results_dict)
 
     # Simulation results    
     sim_ideal = convert_ivp_results(model_ideal.simulate(f_input), ['Ca','Cb','Cc','Cd','V'])
@@ -93,12 +87,8 @@ for i in range(0, rto_runs):
     time = model_ideal.simulate(f_input).t
     timebased_f_dict =  {'F': np.transpose(np.vstack((time, build_F(time, f_input))))}
 
-    # Non-calibrated + ideal
-    md.save_simulation_results(ro_id, sim_initial, 'estimated')
-    md.save_simulation_results(ro_id, sim_ideal, 'expected')
-    # Calibrated + ideal
-    md.save_simulation_results(rc_id, sim_calibrated, 'estimated')
-    md.save_simulation_results(rc_id, sim_ideal, 'expected')
-    # Time-based input
-    md.save_simulation_results(ro_id, timebased_f_dict, 'input')
-    md.save_simulation_results(rc_id, timebased_f_dict, 'input')
+    md.save_simulation_results(run_id, sim_initial, 'initial')
+    md.save_simulation_results(run_id, sim_ideal, 'ideal')
+    md.save_simulation_results(run_id, sim_calibrated, 'calibrated')
+    md.save_simulation_results(run_id, timebased_f_dict, 'input')
+

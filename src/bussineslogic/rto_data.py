@@ -19,15 +19,15 @@ class RTODataModel:
 
         return current_id
 
-    def create_run(self, rto_id, run_type, iteration, status='completed'):
+    def create_run(self, rto_id, iteration, status='completed'):
         last_id = self.get_last_run_id()
         current_id = last_id + 1
 
-        sql = ''' INSERT INTO run(id,rto_id,iteration,status,type)
-              VALUES(?,?,?,?,?) '''
+        sql = ''' INSERT INTO run(id,rto_id,iteration,status)
+              VALUES(?,?,?,?) '''
         cur = self.conn.cursor()
         cur.execute(sql, (current_id, rto_id, iteration,
-                          status, run_type))
+                          status))
         self.conn.commit()
 
         return current_id

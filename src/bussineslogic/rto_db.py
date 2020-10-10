@@ -28,7 +28,7 @@ def create_table(conn, create_table_sql):
 
 def init_data(conn):
     sql_rto = '''INSERT INTO rto(id, name, type, model, date) VALUES (0, 'first RTO ever', 'oh', 'yeah',  NULL);'''
-    sql_run = '''INSERT INTO run(id, iteration, status, type, rto_id) VALUES (0, 0, 'none','none',0);'''
+    sql_run = '''INSERT INTO run(id, iteration, status, rto_id) VALUES (0, 0, 'none',0);'''
 
     cur = conn.cursor()
     cur.execute(sql_rto)
@@ -51,7 +51,6 @@ def init_rto_db(database):
                                     id integer PRIMARY KEY,
                                     iteration integer NOT NULL,
                                     status text NOT NULL,
-                                    type text NOT NULL,
                                     rto_id integer NOT NULL,
                                     FOREIGN KEY (rto_id) REFERENCES rto (id)
                                 );"""
