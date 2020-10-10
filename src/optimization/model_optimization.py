@@ -18,7 +18,7 @@ class ProfileOptimizer:
         self.model = model
 
         best_fobj, sol = DifferentialEvolution(
-            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=100).run()
+            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=50).run()
         return best_fobj, sol, self.xk, self.fxk, self.gk
 
     def save_results(self, x, fx, gx):
@@ -54,7 +54,7 @@ class ModelParameterOptimizer:
         self.input = input
 
         best_fobj, sol = DifferentialEvolution(
-            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=100).run()
+            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=50).run()
         return best_fobj, sol, self.xk, self.fxk
 
     def save_results(self, x, fx, gx):

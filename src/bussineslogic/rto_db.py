@@ -26,83 +26,16 @@ def create_table(conn, create_table_sql):
         print(e)
 
 
-def create_rto(conn, project):
-    """
-    Create a new project into the projects table
-    :param conn:
-    :param project:
-    :return: project id
-    """
-    sql = ''' INSERT INTO projects(name,begin_date,end_date)
-              VALUES(?,?,?) '''
+def init_data(conn):
+    sql_rto = '''INSERT INTO rto(id, name, type, model, date) VALUES (0, 'first RTO ever', 'oh', 'yeah',  NULL);'''
+    sql_run = '''INSERT INTO run(id, iteration, status, type, rto_id) VALUES (0, 0, 'none','none',0);'''
+
     cur = conn.cursor()
-    cur.execute(sql, project)
-    conn.commit()
-    return cur.lastrowid
-
-
-def create_run(conn, task):
-    """
-    Create a new task
-    :param conn:
-    :param task:
-    :return:
-    """
-
-    sql = ''' INSERT INTO tasks(name,priority,status_id,project_id,begin_date,end_date)
-              VALUES(?,?,?,?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, task)
-    conn.commit()
-    return cur.lastrowid
-
-
-def update_task(conn, task):
-    """
-    update priority, begin_date, and end date of a task
-    :param conn:
-    :param task:
-    :return: project id
-    """
-    sql = ''' UPDATE tasks
-              SET priority = ? ,
-                  begin_date = ? ,
-                  end_date = ?
-              WHERE id = ?'''
-    cur = conn.cursor()
-    cur.execute(sql, task)
+    cur.execute(sql_rto)
     conn.commit()
 
-
-def select_all_tasks(conn):
-    """
-    Query all rows in the tasks table
-    :param conn: the Connection object
-    :return:
-    """
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM tasks")
-
-    rows = cur.fetchall()
-
-    for row in rows:
-        print(row)
-
-
-def select_task_by_priority(conn, priority):
-    """
-    Query tasks by priority
-    :param conn: the Connection object
-    :param priority:
-    :return:
-    """
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM tasks WHERE priority=?", (priority,))
-
-    rows = cur.fetchall()
-
-    for row in rows:
-        print(row)
+    cur.execute(sql_run)
+    conn.commit()
 
 
 def init_rto_db(database):
@@ -118,6 +51,7 @@ def init_rto_db(database):
                                     id integer PRIMARY KEY,
                                     iteration integer NOT NULL,
                                     status text NOT NULL,
+                                    type text NOT NULL,
                                     rto_id integer NOT NULL,
                                     FOREIGN KEY (rto_id) REFERENCES rto (id)
                                 );"""
@@ -139,12 +73,11 @@ def init_rto_db(database):
 
     sql_create_run_parameters = """CREATE TABLE IF NOT EXISTS parameter_values (
                                     run_id integer NOT NULL,
-                                    parameter_id integer NOT NULL,
+                                    parameter_name integer NOT NULL,
                                     value real,
                                     enabled integer,
-                                    PRIMARY KEY (run_id, parameter_id),
-                                    FOREIGN KEY (run_id) REFERENCES run (id),
-                                    FOREIGN KEY (parameter_id) REFERENCES parameter (id)
+                                    PRIMARY KEY (run_id, parameter_name),
+                                    FOREIGN KEY (run_id) REFERENCES run (id)
                                 );"""
 
     sql_create_input_data = """CREATE TABLE IF NOT EXISTS input_data (
@@ -153,12 +86,11 @@ def init_rto_db(database):
                                 );"""
 
     sql_create_input_data_values = """CREATE TABLE IF NOT EXISTS input_data_values (
-                                    input_data_id integer,
+                                    var_name integer,
                                     run_id integer,
                                     value real,
-                                    PRIMARY KEY (run_id, input_data_id),
-                                    FOREIGN KEY (run_id) REFERENCES run (id),
-                                    FOREIGN KEY (input_data_id) REFERENCES input_data (id)
+                                    PRIMARY KEY (run_id, var_name),
+                                    FOREIGN KEY (run_id) REFERENCES run (id)
                                 );"""
 
     sql_create_result_variable = """CREATE TABLE IF NOT EXISTS result_variable (
@@ -168,11 +100,19 @@ def init_rto_db(database):
 
     sql_create_result_values = """CREATE TABLE IF NOT EXISTS result_variable_values (
                                     run_id integer,
-                                    var_id integer,
+                                    var_name text,
                                     value real,
-                                    PRIMARY KEY (run_id, var_id),
-                                    FOREIGN KEY (run_id) REFERENCES run (id),
-                                    FOREIGN KEY (var_id) REFERENCES result_variable (id)
+                                    PRIMARY KEY (run_id, var_name),
+                                    FOREIGN KEY (run_id) REFERENCES run (id)
+                                );"""
+
+    sql_create_simulation_values = """CREATE TABLE IF NOT EXISTS simulation_values (
+                                    run_id integer,
+                                    var_name text,
+                                    timestamp real,
+                                    value real,
+                                    PRIMARY KEY (run_id, var_name, timestamp),
+                                    FOREIGN KEY (run_id) REFERENCES run (id)
                                 );"""
 
     # create a database connection
@@ -189,6 +129,8 @@ def init_rto_db(database):
         create_table(conn, sql_create_input_data_values)
         create_table(conn, sql_create_result_variable)
         create_table(conn, sql_create_result_values)
+        create_table(conn, sql_create_simulation_values)
+        init_data(conn)
     else:
         print("Error! cannot create the database connection.")
 

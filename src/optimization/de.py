@@ -2,7 +2,7 @@ import numpy as np
 
 
 class DifferentialEvolution:
-    def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=20, max_generations=100, de_type='rand/1/bin', callback=None):
+    def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=10, max_generations=100, de_type='rand/1/bin', callback=None):
         self.fobj = func
         self.lb = np.asarray(lb).reshape(1,-1)
         self.ub = np.asarray(ub).reshape(1,-1)
