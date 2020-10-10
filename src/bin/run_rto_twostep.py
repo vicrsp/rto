@@ -27,14 +27,6 @@ initial_parameters = [0.053, 0.128]
 md = RTODataModel()
 rto_id = md.create_rto()
 
-# Define variables to store the progress
-run_samples = []
-run_simulated_samples = []
-run_parameters = []
-run_inputs = []
-run_calibration_objective = []
-run_optimization_objective = []
-
 # Load the real model to generate samples
 model_ideal = SemiBatchReactor()
 

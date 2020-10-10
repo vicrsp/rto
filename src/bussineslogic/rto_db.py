@@ -72,7 +72,7 @@ def init_rto_db(database):
 
     sql_create_run_parameters = """CREATE TABLE IF NOT EXISTS parameter_values (
                                     run_id integer NOT NULL,
-                                    parameter_name integer NOT NULL,
+                                    parameter_name text NOT NULL,
                                     value real,
                                     enabled integer,
                                     PRIMARY KEY (run_id, parameter_name),
