@@ -2,6 +2,11 @@ import numpy as np
 from optimization.utils import calculate_SSE
 from optimization.de import DifferentialEvolution
 
+CA_INDEX = 0
+CB_INDEX = 1
+CC_INDEX = 2
+CD_INDEX = 3
+V_INDEX = 4
 
 class ProfileOptimizer:
     # F0, tm, Fm, ts, Fs = x
@@ -65,6 +70,14 @@ class ModelParameterOptimizer:
         sim_values = self.model.get_simulated_samples(
             self.input, x, self.samples)
 
+        sim_values_to_use = {}
+        samples_to_use = {}
+        for key in self.samples.keys():
+            sim_values_to_use[key] = [sim_values[key][CB_INDEX],
+                                      sim_values[key][CC_INDEX], sim_values[key][CD_INDEX]]
+            samples_to_use[key] = [self.samples[key][CB_INDEX],
+                                   self.samples[key][CC_INDEX], self.samples[key][CD_INDEX]]
+
         # SSE
-        error = calculate_SSE(sim_values, self.samples)
+        error = calculate_SSE(sim_values_to_use, samples_to_use)
         return error, []

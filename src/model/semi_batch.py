@@ -30,7 +30,7 @@ class SemiBatchReactor:
             for i, result in enumerate(sim_results.y):
                 val = result[idx]
                 if(noise == True):
-                    sample.append(val + np.random.normal(0,0.1*val))
+                    sample.append(val + np.random.normal(0,0.05*val))
                 else:
                     sample.append(val)
 
