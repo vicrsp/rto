@@ -161,7 +161,7 @@ class DifferentialEvolution:
 
     def run(self, debug=True):
         self.initialize_population()
-        for _ in range(self.max_generations):
+        for i in range(self.max_generations):
             fobj, g = self.evaluate_population_cost(self.population)
             v = []
 
@@ -176,9 +176,12 @@ class DifferentialEvolution:
             self.population = self.select_survivors(
                 u, self.population, fobj, g)
 
-            if((debug == True) & (self.best_objective != np.Infinity)):
-                print('Best fobj: {}'.format(self.best_objective))
-                print('Best sol: {}'.format(
-                    self.denormalize(self.best_solution)))
+            if(debug==True):
+                print('Progress: {:.2f}%'.format(100 * i / self.max_generations))
+
+            # if((debug == True) & (self.best_objective != np.Infinity)):
+            #     print('Best fobj: {}'.format(self.best_objective))
+            #     print('Best sol: {}'.format(
+            #         self.denormalize(self.best_solution)))
 
         return self.best_objective, self.denormalize(self.best_solution).flatten()

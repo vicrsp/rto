@@ -1,5 +1,5 @@
 import numpy as np
-from optimization.utils import build_F
+from optimization.utils import calculate_SSE
 from optimization.de import DifferentialEvolution
 
 
@@ -18,7 +18,7 @@ class ProfileOptimizer:
         self.model = model
 
         best_fobj, sol = DifferentialEvolution(
-            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results).run()
+            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=100).run()
         return best_fobj, sol, self.xk, self.fxk, self.gk
 
     def save_results(self, x, fx, gx):
@@ -38,6 +38,7 @@ class ProfileOptimizer:
 
         return fx, g
 
+
 class ModelParameterOptimizer:
     def __init__(self, lb=[0.0011, 0.0026], ub=[0.212, 0.5120]):
         self.lb = lb
@@ -53,7 +54,7 @@ class ModelParameterOptimizer:
         self.input = input
 
         best_fobj, sol = DifferentialEvolution(
-            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results).run()
+            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=100).run()
         return best_fobj, sol, self.xk, self.fxk
 
     def save_results(self, x, fx, gx):
@@ -63,15 +64,7 @@ class ModelParameterOptimizer:
     def eval_objective(self, x):
         sim_values = self.model.get_simulated_samples(
             self.input, x, self.samples)
-        # Weight vector
-        w = np.ones_like(self.input)
 
         # SSE
-        error = 0
-        for time, sim_value in sim_values.items():
-            meas_value = self.samples[time]
-            for i in range(len(meas_value)):
-                if(i > 0 & i < 4):
-                    error = error + \
-                        w[i]*((meas_value[i] - sim_value[i])/meas_value[i])**2
+        error = calculate_SSE(sim_values, self.samples)
         return error, []
