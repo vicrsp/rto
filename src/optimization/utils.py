@@ -20,12 +20,24 @@ def build_F(t, x):
 
     return Ft
 
+
 def calculate_SSE(sim_values, samples):
     # SSE
     error = 0
     for time, sim_value in sim_values.items():
         meas_value = samples[time]
         for i in range(len(meas_value)):
-                error = error + \
-                    ((meas_value[i] - sim_value[i])/meas_value[i])**2
+            error = error + \
+                ((meas_value[i] - sim_value[i])/meas_value[i])**2
     return error
+
+
+def convert_ivp_results(ivp_results, keys=None):
+    results = {}
+    time = ivp_results.t
+    signals = ivp_results.y
+    for i, signal in enumerate(signals):
+        key = i if keys == None else keys[i]
+        results[key] = np.transpose(np.vstack((time, signal)))
+
+    return results

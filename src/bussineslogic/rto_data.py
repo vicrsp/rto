@@ -74,14 +74,15 @@ class RTODataModel:
             'INSERT INTO result_variable_values VALUES (?,?,?)', run_params)
         self.conn.commit()
 
-    def save_simulation_results(self, run_id, sim_values):
+    def save_simulation_results(self, run_id, sim_values, sim_type):
         cur = self.conn.cursor()
         run_values = []
         for rdv_id, value in sim_values.items():
-            run_values.append((run_id, rdv_id, value[0], value[1]))
+            for val in value:
+                run_values.append((run_id, rdv_id, sim_type, val[0], val[1]))
 
         cur.executemany(
-            'INSERT INTO simulation_values VALUES (?,?,?,?)', run_values)
+            'INSERT INTO simulation_values VALUES (?,?,?,?,?)', run_values)
         self.conn.commit()
 
     def get_last_rto_id(self):

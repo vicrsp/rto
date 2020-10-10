@@ -109,9 +109,10 @@ def init_rto_db(database):
     sql_create_simulation_values = """CREATE TABLE IF NOT EXISTS simulation_values (
                                     run_id integer,
                                     var_name text,
+                                    sim_type text,
                                     timestamp real,
                                     value real,
-                                    PRIMARY KEY (run_id, var_name, timestamp),
+                                    PRIMARY KEY (run_id, var_name, timestamp, sim_type),
                                     FOREIGN KEY (run_id) REFERENCES run (id)
                                 );"""
 
