@@ -1,5 +1,6 @@
 
 
+import multiprocessing
 import os
 import sys
 import pandas as pd
@@ -40,25 +41,20 @@ def filter_parameters(calibrated, previous, theta):
 # 1) DE mean/1/bin pop 20, gen 100
 # 2) DE rand/1/bin pop 20, gen 100
 
-# Define general constants
-rto_runs = 30
-rto_cycle = 10
-theta = 0.5
-de_types = ['mean/1/bin', 'rand/1/bin']
-pop_size = 20
-max_gen = 100
-sample_times = [1.0] #[0.95, 0.97, 0.99]
-initial_parameters = [0.053, 0.128]
+def run_rto(de_type, rto_runs, rto_cycle):
+    theta = 0.5
+    pop_size = 20
+    max_gen = 100
+    sample_times = [1.0] #[0.95, 0.97, 0.99]
+    initial_parameters = [0.053, 0.128]
 
-# Get an instance of the profile and parameter optimizers
-opt = ProfileOptimizer()
-cal = ModelParameterOptimizer()
+    # Get an instance of the profile and parameter optimizers
+    opt = ProfileOptimizer()
+    cal = ModelParameterOptimizer()
 
-# Load the real model to generate samples
-model_ideal = SemiBatchReactor()
+    # Load the real model to generate samples
+    model_ideal = SemiBatchReactor()
 
-for de_type in de_types:
-    print('Started RTO algorithm: {}'.format(de_type))
     for r in range(rto_runs):
         # Creates the instance in the DB
         md = RTODataModel()
@@ -135,4 +131,18 @@ for de_type in de_types:
             
             print('Finished RTO cycle #{}'.format(i))
         print('Finished RTO run #{}'.format(r))
-    print('Finished RTO algorithm: {}'.format(de_type))
+
+
+   
+
+if __name__ == '__main__':
+    # Define general constants
+    rto_runs = 30
+    rto_cycle = 10
+    de_types = ['mean/1/bin', 'rand/1/bin']
+    jobs = []
+    for de_type in de_types:
+        p = multiprocessing.Process(target=run_rto, args=(de_type, rto_runs, rto_cycle))
+        jobs.append(p)
+        p.start()
+    [job.join() for job in jobs]
