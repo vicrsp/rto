@@ -67,7 +67,8 @@ for i in range(0, rto_runs):
     md.save_samples(run_id, samples)
     # Parameters
     md.save_parameters(run_id, {'k1_initial': k1, 'k2_initial': k2,
-                                'k1_calibrated': calibrated_parameters[0], 'k2_calibrated': calibrated_parameters[1]})
+                                'k1_calibrated': calibrated_parameters[0], 
+                                'k2_calibrated': calibrated_parameters[1]})
     # Input data
     input_dict = {'F0': f_input[0], 'tm': f_input[1],
                   'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4]}
@@ -95,5 +96,9 @@ for i in range(0, rto_runs):
     # Results
     results_dict = {'error': calibration_error, 'cost_model': -f_cost,
                     'Cb_tf': sim_ideal['Cb'][-1, 1], 'Cd_tf': sim_ideal['Cd'][-1, 1],
-                    'cost_real': sim_ideal['Cc'][-1, 1] * sim_ideal['V'][-1, 1]}
+                    'cost_real': sim_ideal['Cc'][-1, 1] * sim_ideal['V'][-1, 1], 
+                    'k1_initial': k1, 'k2_initial': k2,
+                    'k1_calibrated': calibrated_parameters[0], 'k2_calibrated': calibrated_parameters[1],
+                    'F0': f_input[0], 'tm': f_input[1],
+                    'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4]}
     md.save_results(run_id, results_dict)

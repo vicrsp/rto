@@ -111,3 +111,18 @@ class RTODataModel:
         
         return results
 
+    def get_rto_simulations(self, rto_id):
+        cur = self.conn.cursor()
+        sql = '''SELECT iteration, sim_type, timestamp, var_name, value
+                FROM rto JOIN run ON run.rto_id = rto.id
+                JOIN simulation_values on simulation_values.run_id = run.id
+                WHERE rto.id = (?) '''
+        cur.execute(sql, (rto_id,))
+        db_results = cur.fetchall()
+        results = []
+        for row in db_results:
+            results.append(list(row))
+        
+        return results
+
+
