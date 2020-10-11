@@ -8,6 +8,7 @@ CC_INDEX = 2
 CD_INDEX = 3
 V_INDEX = 4
 
+
 class ProfileOptimizer:
     # F0, tm, Fm, ts, Fs = x
     def __init__(self, ub=[0.002, 250, 0.002, 250, 0.002], lb=[0.0, 0, 0, 0, 0], g=[0.025, 0.15]):
@@ -19,11 +20,12 @@ class ProfileOptimizer:
         self.gk = []
 
     # x0=[0.002, 60, 0.001, 100, 0.0]
-    def run(self, model):
+    def run(self, model, max_generations=100, pop_size=20, de_type='rand/1/bin'):
         self.model = model
 
         best_fobj, sol = DifferentialEvolution(
-            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=50).run()
+            func=self.eval_objective, lb=self.lb, ub=self.ub,
+            callback=self.save_results, max_generations=max_generations, pop_size=pop_size, de_type=de_type).run(debug=False)
         return best_fobj, sol, self.xk, self.fxk, self.gk
 
     def save_results(self, x, fx, gx):
@@ -52,14 +54,15 @@ class ModelParameterOptimizer:
         self.fxk = []
 
     #  x0=[0.053, 0.128]
-    def run(self, model, input, samples):
+    def run(self, model, input, samples, max_generations=100, pop_size=20, de_type='rand/1/bin'):
 
         self.model = model
         self.samples = samples
         self.input = input
 
         best_fobj, sol = DifferentialEvolution(
-            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, max_generations=50).run()
+            func=self.eval_objective, lb=self.lb, ub=self.ub, callback=self.save_results, 
+            max_generations=max_generations, pop_size=pop_size, de_type=de_type).run(debug=False)
         return best_fobj, sol, self.xk, self.fxk
 
     def save_results(self, x, fx, gx):

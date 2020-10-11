@@ -4,8 +4,8 @@ import numpy as np
 class DifferentialEvolution:
     def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=10, max_generations=100, de_type='rand/1/bin', callback=None):
         self.fobj = func
-        self.lb = np.asarray(lb).reshape(1,-1)
-        self.ub = np.asarray(ub).reshape(1,-1)
+        self.lb = np.asarray(lb).reshape(1, -1)
+        self.ub = np.asarray(ub).reshape(1, -1)
         self.population_size = pop_size
         self.max_generations = max_generations
         self.num_variables = len(lb)
@@ -27,14 +27,14 @@ class DifferentialEvolution:
     def normalize(self, x):
         norm_x = np.zeros_like(x)
         for i in range(x.shape[0]):
-            norm_x[i,:] = 100 * (x[i] - self.lb) / (self.ub - self.lb)
+            norm_x[i, :] = 100 * (x[i] - self.lb) / (self.ub - self.lb)
         return norm_x
 
     def denormalize(self, x):
         xr = x.reshape(-1, self.num_variables)
         denorm_x = np.zeros_like(xr)
         for i in range(xr.shape[0]):
-            denorm_x[i,:] = xr[i] * (self.ub - self.lb) / 100 + self.lb
+            denorm_x[i, :] = xr[i] * (self.ub - self.lb) / 100 + self.lb
         return denorm_x
 
     def initialize_population(self):
@@ -74,18 +74,20 @@ class DifferentialEvolution:
             r1 = np.random.randint(0, self.population_size)
             return r1, population[r1]
         elif(self.base == 'mean'):
-            return np.NaN, np.mean(population, axis=0)
+            return None, np.mean(population, axis=0)
         else:
             raise ValueError('Base={} is not implemented!'.format(self.base))
 
     def select_difference_vector(self, r1, population):
         if(self.d == "1"):
             r2 = np.random.randint(0, self.population_size)
-            while(r2 == r1):
-                r2 = np.random.randint(0, self.population_size)
+            if(r1 != None):
+                while(r2 == r1):
+                    r2 = np.random.randint(0, self.population_size)
             r3 = np.random.randint(0, self.population_size)
-            while(r3 == r1 | r3 == r2):
-                r3 = np.random.randint(0, self.population_size)
+            if(r1 != None):
+                while(r3 == r1 | r3 == r2):
+                    r3 = np.random.randint(0, self.population_size)
             return population[r2] - population[r3]
         else:
             raise ValueError(
@@ -129,10 +131,6 @@ class DifferentialEvolution:
 
     def eval_objective(self, x):
         cost, g = self.fobj(self.denormalize(x).flatten())
-
-        # handle constraints with penalty method
-        #cost = cost + 10000 * np.sum(np.maximum(g, np.zeros_like(g)))
-
         return cost, np.asarray(g)
 
     def select_survivors(self, u, x, fx, gx):
@@ -176,8 +174,9 @@ class DifferentialEvolution:
             self.population = self.select_survivors(
                 u, self.population, fobj, g)
 
-            if(debug==True):
-                print('Progress: {:.2f}%'.format(100 * i / self.max_generations))
+            if(debug == True):
+                print('Progress: {:.2f}%'.format(
+                    100 * i / self.max_generations))
 
             # if((debug == True) & (self.best_objective != np.Infinity)):
             #     print('Best fobj: {}'.format(self.best_objective))

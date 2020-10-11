@@ -18,17 +18,21 @@ from optimization.model_optimization import ProfileOptimizer, ModelParameterOpti
 from optimization.de import DifferentialEvolution
 from bussineslogic.rto_data import RTODataModel
 
-def filtered_parameters(calibrated, previous, theta):
+def filter_parameters(calibrated, previous, theta):
     return previous * (1 - theta) + theta * calibrated
-
 
 # Define general constants
 rto_runs = 20
 n_samples = 3
+theta = 0.5
+de_type = 'mean/1/bin' #'mean/1/bin'
+pop_size = 20
+max_gen = 100
+sample_times = [1.0] #[0.95, 0.97, 0.99]
 
 # Creates the instance in the DB
 md = RTODataModel()
-rto_id = md.create_rto('theta=1')
+rto_id = md.create_rto('de:{}, pop:{}, max_gen:{}'.format(de_type, pop_size, max_gen))
 
 # Load the real model to generate samples
 model_ideal = SemiBatchReactor()
@@ -40,23 +44,28 @@ cal = ModelParameterOptimizer()
 initial_parameters = [0.053, 0.128]
 calibrated_parameters = initial_parameters
 
+# Experiment design
+# RTO cycle: 
+#   - 10 batches
+
+
 # Begin the RTO loop
 for i in range(0, rto_runs):
     # First, optimize the input signal using the previous parameters
     # The parameters are filtered, based on chachua2009
-    k1, k2 = filtered_parameters(np.asarray(calibrated_parameters), np.asarray(initial_parameters), 1.0)
+    k1, k2 = filter_parameters(np.asarray(calibrated_parameters), np.asarray(initial_parameters), theta)
     model_aprox = SemiBatchReactor(k=[k1, k2, 0, 0, 5])
-    f_cost, f_input, _, _, _ = opt.run(model_aprox)
+    f_cost, f_input, _, _, _ = opt.run(model_aprox, max_gen, pop_size, de_type)
     print('Fopt---> {}'.format(f_cost))
     print('Xopt---> {}'.format(f_input))
 
     # Then, generate the samples from ideal model, i.e, use the input signal on the plant
-    samples = model_ideal.get_samples(f_input, [0.95, 0.97, 0.99])
+    samples = model_ideal.get_samples(f_input, sample_times)
 
     # And finally calibrate the model parameters
     initial_parameters = calibrated_parameters
     calibration_error, calibrated_parameters, _, _ = cal.run(
-        model_aprox, f_input, samples)
+        model_aprox, f_input, samples, max_gen, pop_size, de_type)
     print('Fcal---> {}'.format(calibration_error))
     print('Xcal---> {}'.format(calibrated_parameters))
 
@@ -94,9 +103,13 @@ for i in range(0, rto_runs):
     md.save_simulation_results(run_id, timebased_f_dict, 'input')
 
     # Results
-    results_dict = {'error': calibration_error, 'cost_model': -f_cost,
-                    'Cb_tf': sim_ideal['Cb'][-1, 1], 'Cd_tf': sim_ideal['Cd'][-1, 1],
+    results_dict = {'error_calibrator': calibration_error, 'cost_optmizer': -f_cost,
+                    'Cb_tf_real': sim_ideal['Cb'][-1, 1], 'Cd_tf_real': sim_ideal['Cd'][-1, 1],
+                    'Cb_tf_calibr': sim_calibrated['Cb'][-1, 1], 'Cd_tf_calibr': sim_calibrated['Cd'][-1, 1],
+                    'Cb_tf_init': sim_initial['Cb'][-1, 1], 'Cd_tf_init': sim_initial['Cd'][-1, 1],
                     'cost_real': sim_ideal['Cc'][-1, 1] * sim_ideal['V'][-1, 1], 
+                    'cost_calibr': sim_calibrated['Cc'][-1, 1] * sim_calibrated['V'][-1, 1], 
+                    'cost_initial': sim_initial['Cc'][-1, 1] * sim_initial['V'][-1, 1], 
                     'k1_initial': k1, 'k2_initial': k2,
                     'k1_calibrated': calibrated_parameters[0], 'k2_calibrated': calibrated_parameters[1],
                     'F0': f_input[0], 'tm': f_input[1],

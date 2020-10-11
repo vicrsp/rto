@@ -44,7 +44,7 @@ def init_rto_db(database):
                                         name text NOT NULL,
                                         type text NOT NULL,
                                         model text NOT NULL,
-                                        date timestamp,
+                                        date timestamp
                                     ); """
 
     sql_create_run_table = """CREATE TABLE IF NOT EXISTS run (
