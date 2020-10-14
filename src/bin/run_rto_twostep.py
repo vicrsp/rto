@@ -113,5 +113,6 @@ for i in range(0, rto_runs):
                     'k1_initial': k1, 'k2_initial': k2,
                     'k1_calibrated': calibrated_parameters[0], 'k2_calibrated': calibrated_parameters[1],
                     'F0': f_input[0], 'tm': f_input[1],
-                    'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4]}
+                    'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4],
+                    'constraint_1': sim_ideal['Cb'][-1, 1] - 0.025, 'constraint_2': sim_ideal['Cd'][-1, 1] - 0.15}
     md.save_results(run_id, results_dict)

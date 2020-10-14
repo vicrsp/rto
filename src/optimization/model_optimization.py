@@ -11,18 +11,19 @@ V_INDEX = 4
 
 class ProfileOptimizer:
     # F0, tm, Fm, ts, Fs = x
-    def __init__(self, ub=[0.002, 250, 0.002, 250, 0.002], lb=[0.0, 0, 0, 0, 0], g=[0.025, 0.15]):
+    def __init__(self, ub=[250, 0.002, 250], lb=[0, 0, 0], g=[0.025, 0.15]):
         self.g = g
         self.lb = lb
         self.ub = ub
-        self.xk = []
-        self.fxk = []
-        self.gk = []
+
 
     # x0=[0.002, 60, 0.001, 100, 0.0]
     def run(self, model, max_generations=100, pop_size=20, de_type='rand/1/bin'):
         self.model = model
-
+        self.xk = []
+        self.fxk = []
+        self.gk = []
+        
         best_fobj, sol = DifferentialEvolution(
             func=self.eval_objective, lb=self.lb, ub=self.ub,
             callback=self.save_results, max_generations=max_generations, pop_size=pop_size, de_type=de_type).run(debug=False)
@@ -41,7 +42,7 @@ class ProfileOptimizer:
         V_tf = sim_results.y[4][-1]
 
         fx = -Cc_tf * V_tf
-        g = [Cb_tf - self.g[0], Cd_tf - self.g[1]]
+        g = [Cb_tf - self.g[0], Cd_tf - self.g[1], x[0] - x[2]]
 
         return fx, g
 

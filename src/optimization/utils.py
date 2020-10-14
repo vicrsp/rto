@@ -8,14 +8,14 @@ def find_nearest_idx(array, value):
 
 
 def build_F(t, x):
-    F0, tm, Fm, ts, Fs = x
+    F0, tm, Fs, ts, Fmin = [0.002, x[0], x[1], x[2], 0]
     Ft = np.zeros_like(t)
     for index, tstamp in enumerate(t):
         F = F0
         if(tstamp > tm):
-            F = Fm
-        if(tstamp > ts):
             F = Fs
+        if(tstamp > ts):
+            F = Fmin
         Ft[index] = F
 
     return Ft

@@ -69,12 +69,15 @@ class DifferentialEvolution:
 
         return pop_fobj, pop_g
 
-    def select_base_vector(self, population):
+    def select_base_vector(self, population, cost):
         if(self.base == 'rand'):
             r1 = np.random.randint(0, self.population_size)
             return r1, population[r1]
         elif(self.base == 'mean'):
             return None, np.mean(population, axis=0)
+        elif(self.base == 'best'):
+            best_idx = np.argmin(cost)
+            return None, population[best_idx]
         else:
             raise ValueError('Base={} is not implemented!'.format(self.base))
 
@@ -162,9 +165,9 @@ class DifferentialEvolution:
         for i in range(self.max_generations):
             fobj, g = self.evaluate_population_cost(self.population)
             v = []
-
+            fobj_penalized = fobj + 1000 * np.maximum(np.zeros(self.population_size), np.max(np.asarray(g), axis=1))
             for _ in range(self.population_size):
-                r1, base = self.select_base_vector(self.population)
+                r1, base = self.select_base_vector(self.population, fobj_penalized)
                 difference = self.select_difference_vector(r1, self.population)
                 scale_factor = self.select_scale_factor()
                 v.append(self.mutate(base, scale_factor, difference))
@@ -174,13 +177,13 @@ class DifferentialEvolution:
             self.population = self.select_survivors(
                 u, self.population, fobj, g)
 
-            if(debug == True):
-                print('Progress: {:.2f}%'.format(
-                    100 * i / self.max_generations))
+            # if(debug == True):
+            #     print('Progress: {:.2f}%'.format(
+            #         100 * i / self.max_generations))
 
-            # if((debug == True) & (self.best_objective != np.Infinity)):
-            #     print('Best fobj: {}'.format(self.best_objective))
-            #     print('Best sol: {}'.format(
-            #         self.denormalize(self.best_solution)))
+            if((debug == True) & (self.best_objective != np.Infinity)):
+                print('Best fobj: {}'.format(self.best_objective))
+                # print('Best sol: {}'.format(
+                #     self.denormalize(self.best_solution)))
 
         return self.best_objective, self.denormalize(self.best_solution).flatten()

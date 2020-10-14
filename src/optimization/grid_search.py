@@ -1,5 +1,11 @@
 import numpy as np
+from .utils import calculate_SSE
 
+CA_INDEX = 0
+CB_INDEX = 1
+CC_INDEX = 2
+CD_INDEX = 3
+V_INDEX = 4
 class ParameterGridSearch:
     def __init__(self, lb=[0.01, 0.01], ub=[0.5,0.5], N=10):
         self.lb = lb
@@ -44,17 +50,15 @@ class ParameterGridSearch:
 
     def eval(self, x, model, input, samples):
         sim_values = model.get_simulated_samples(input, x, samples)
-        # Weight vector
-        w = np.ones_like(input)
-
+        sim_values_to_use = {}
+        samples_to_use = {}
+        for key in samples.keys():
+            sim_values_to_use[key] = [sim_values[key][CB_INDEX],
+                                      sim_values[key][CC_INDEX], sim_values[key][CD_INDEX]]
+            samples_to_use[key] = [samples[key][CB_INDEX],
+                                   samples[key][CC_INDEX], samples[key][CD_INDEX]]
         # SSE
-        error = 0
-        for time, sim_value in sim_values.items():
-            meas_value = samples[time]
-            for i in range(len(meas_value)):
-                if(i > 0 & i < 4):
-                    error = error + w[i]*((meas_value[i] - sim_value[i])/meas_value[i])**2
-        return error
+        return calculate_SSE(sim_values_to_use, samples_to_use)
 
     def eval_pareto(self, x, model, input, samples):
         sim_values = model.get_simulated_samples(input, x, samples)

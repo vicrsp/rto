@@ -58,7 +58,7 @@ def run_rto(de_type, rto_runs, rto_cycle):
     for r in range(rto_runs):
         # Creates the instance in the DB
         md = RTODataModel()
-        rto_id = md.create_rto('de:{}, pop:{}, max_gen:{}, run: {}'.format(de_type, pop_size, max_gen, r))
+        rto_id = md.create_rto('de:{}, pop:{}, max_gen:{}, run: {}'.format(de_type, pop_size, max_gen, r), rto_type='two-step-paper')
 
         calibrated_parameters = initial_parameters
 
@@ -92,8 +92,7 @@ def run_rto(de_type, rto_runs, rto_cycle):
                                         'k1_calibrated': calibrated_parameters[0], 
                                         'k2_calibrated': calibrated_parameters[1]})
             # Input data
-            input_dict = {'F0': f_input[0], 'tm': f_input[1],
-                        'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4]}
+            input_dict = {'tm': f_input[0], 'Fs': f_input[1],'ts': f_input[2]}
             md.save_input_data(run_id, input_dict)
 
             # Simulation results
@@ -125,8 +124,7 @@ def run_rto(de_type, rto_runs, rto_cycle):
                             'cost_initial': sim_initial['Cc'][-1, 1] * sim_initial['V'][-1, 1], 
                             'k1_initial': k1, 'k2_initial': k2,
                             'k1_calibrated': calibrated_parameters[0], 'k2_calibrated': calibrated_parameters[1],
-                            'F0': f_input[0], 'tm': f_input[1],
-                            'Fm': f_input[2], 'ts': f_input[3], 'Fs': f_input[4]}
+                            'tm': f_input[0], 'Fs': f_input[1],'ts': f_input[2]}
             md.save_results(run_id, results_dict)
             
             print('Finished RTO cycle #{}'.format(i))

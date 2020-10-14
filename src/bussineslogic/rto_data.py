@@ -97,13 +97,13 @@ class RTODataModel:
         result = cur.fetchone()
         return result[0]
 
-    def get_rto_results(self, rto_id):
+    def get_rto_results(self, rto_id, rto_type):
         cur = self.conn.cursor()
-        sql = '''SELECT iteration, var_name, value
+        sql = '''SELECT rto.id, rto.name, rto.type, run.id, iteration, var_name, value
                 FROM rto JOIN run ON run.rto_id = rto.id
                 JOIN result_variable_values on result_variable_values.run_id = run.id
-                WHERE rto.id = (?) '''
-        cur.execute(sql, (rto_id,))
+                WHERE rto.id >= (?) AND rto.type = (?) ORDER BY rto.id '''
+        cur.execute(sql, (rto_id, rto_type))
         db_results = cur.fetchall()
         results = []
         for row in db_results:
