@@ -1,5 +1,6 @@
 Output/
 figures/
+data/
 *.asv
 .ipynb_checkpoints/
 .vscode/.ropeproject
