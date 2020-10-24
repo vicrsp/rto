@@ -165,6 +165,7 @@ class DifferentialEvolution:
         for i in range(self.max_generations):
             fobj, g = self.evaluate_population_cost(self.population)
             v = []
+            # use penalization for base vector selection only
             fobj_penalized = fobj + 1000 * np.maximum(np.zeros(self.population_size), np.max(np.asarray(g), axis=1))
             for _ in range(self.population_size):
                 r1, base = self.select_base_vector(self.population, fobj_penalized)
