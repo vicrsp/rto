@@ -1,5 +1,4 @@
 import numpy as np
-from gekko import GEKKO
 import json
 from scipy.integrate import odeint, solve_ivp
 from optimization.utils import find_nearest_idx
@@ -31,7 +30,7 @@ class SemiBatchReactor:
             for i, result in enumerate(sim_results.y):
                 val = result[idx]
                 if(noise == True):
-                    sample.append(val + np.random.normal(0,0.1*val))
+                    sample.append(val + np.random.normal(0,0.05*val))
                 else:
                     sample.append(val)
 
@@ -57,13 +56,13 @@ class SemiBatchReactor:
 
     def odecallback(self, t, w, x):
         Ca, Cb, Cc, Cd, V = w
-        F0, tm, Fm, ts, Fs = x 
+        F0, tm, Fs, ts, Fmin = x 
         F = F0
         if(t > tm):
-            F = Fm
+            F = Fs
         
         if(t > ts):
-            F = Fs
+            F = Fmin
 
         # variable
         k1 = self.k1
@@ -84,4 +83,5 @@ class SemiBatchReactor:
 
     def simulate(self, x):
         t = [self.stoptime * float(i) / (self.numpoints - 1) for i in range(self.numpoints)]
-        return solve_ivp(fun=self.odecallback, t_span=[0, self.stoptime], t_eval=t, y0=self.y0, args=(x,))
+        xnew = [0.002, x[0], x[1], x[2], 0]
+        return solve_ivp(fun=self.odecallback, t_span=[0, self.stoptime], t_eval=t, y0=self.y0, args=(xnew,))
