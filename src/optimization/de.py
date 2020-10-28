@@ -2,8 +2,7 @@ import numpy as np
 
 
 class DifferentialEvolution:
-    def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=10, max_generations=100, de_type='rand/1/bin', callback=None):
-        self.fobj = func
+    def __init__(self, lb, ub, mutation_prob=0.5, pop_size=10, max_generations=100, de_type='rand/1/bin', callback=None):
         self.lb = np.asarray(lb).reshape(1, -1)
         self.ub = np.asarray(ub).reshape(1, -1)
         self.population_size = pop_size
@@ -160,7 +159,8 @@ class DifferentialEvolution:
 
         return np.asarray(survivors)
 
-    def run(self, debug=True):
+    def run(self, func, debug=True):
+        self.fobj = func
         self.initialize_population()
         for i in range(self.max_generations):
             fobj, g = self.evaluate_population_cost(self.population)
