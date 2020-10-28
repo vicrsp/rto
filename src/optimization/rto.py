@@ -21,7 +21,12 @@ class RTO:
         self.cycles = cycles
 
     def run(self):
-        for _ in range(self.cycles):
+
+        fr_k = []
+        gr_k = []
+
+        for i in range(self.cycles):
+            print('Cycle {} started!'.format(i))
             f_cost, f_input = self.optimization_problem.run(
                 self.process_model, self.adaptation_strategy)
 
@@ -29,9 +34,14 @@ class RTO:
             sim_model = self.process_model.simulate(f_input)
 
             fr, gr = self.real_process.get_objective(
-                sim_real), self.real_process.get_constraints(sim_real)
+                sim_real), self.real_process.get_constraints(f_input, sim_real)
+            
+            fr_k.append(fr)
+            gr_k.append(gr)
 
-            gm = self.process_model.get_constraints(sim_model)
+            gm = self.process_model.get_constraints(f_input, sim_model)
             data = np.append(np.asarray(fr - f_cost), gr - gm)
 
             self.adaptation_strategy.adapt(f_input, data)
+        
+        return fr_k, gr_k

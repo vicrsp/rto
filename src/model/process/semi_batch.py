@@ -101,7 +101,8 @@ class SemiBatchReactor:
         fx = -Cc_tf * V_tf
         return fx
 
-    def get_constraints(self, sim_results):
+    def get_constraints(self, x, sim_results):
         Cb_tf = sim_results.y[1][-1]
         Cd_tf = sim_results.y[3][-1]
-        return np.asarray([Cb_tf, Cd_tf])
+        
+        return np.asarray([Cb_tf, Cd_tf, x[0] - x[2]])

@@ -27,8 +27,9 @@ class BatchProfileOptimizer:
 
     def eval_objective(self, x):
         sim_results = self.process_model.simulate(x)
-        fm, gm = self.ma_model.get_modifiers(x) if self.ma_model != None else [0, np.zeros(len(self.g))]
+        modifiers = self.ma_model.get_modifiers(x) if self.ma_model.models != None else [0, np.zeros(len(self.g))]
+        fm, gm = modifiers[0], modifiers[1:]
 
         fx = self.process_model.get_objective(sim_results) + fm
-        g = self.process_model.get_constraints(sim_results) + gm - self.g
+        g = self.process_model.get_constraints(x, sim_results) + gm - self.g
         return fx, g

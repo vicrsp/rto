@@ -5,11 +5,29 @@ from warnings import simplefilter
 
 
 class MAGaussianProcesses:
-    def __init__(self, process_model):
+    def __init__(self, process_model, initial_data):
         self.process_model = process_model
         self.u_k = []
         self.samples_k = []
         self.models = None
+        self.initialize_models(initial_data)
+
+    def initialize_models(self, data):
+        u_train, y_train = data
+        _, cols = y_train.shape
+
+        self.u_k = list(u_train)
+        self.samples_k = list(y_train)
+
+        # train the model for objective modifiers
+        models = []
+        models.append(self.train(u_train, y_train[:, 0]))
+
+        # train the model for constraints modifiers
+        for col in range(1, cols):
+            models.append(self.train(u_train, y_train[:, col]))
+
+        self.models = models
 
     def train(self, X, y):
         gp_model = GaussianProcessRegressor()
@@ -20,8 +38,8 @@ class MAGaussianProcesses:
         with catch_warnings():
             # ignore generated warnings
             simplefilter("ignore")
-            return np.asarray([model.predict(u, return_std=False) for model in self.models])
-    
+            return np.asarray([model.predict(u.reshape(1,-1), return_std=False) for model in self.models])
+
     def get_model_parameters(self):
         return self.process_model.initial_parameters
 
@@ -34,7 +52,7 @@ class MAGaussianProcesses:
         u_train = np.asarray(self.u_k)
         y_train = np.asarray(self.samples_k)
         _, cols = y_train.shape
-        
+
         # train the model for objective modifiers
         models = []
         models.append(self.train(u_train, y_train[:, 0]))
