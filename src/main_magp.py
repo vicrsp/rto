@@ -6,11 +6,11 @@ from model.adaptation.ma_gaussian_processes import MAGaussianProcesses
 from model.process.semi_batch import SemiBatchReactor
 from optimization.de import DifferentialEvolution
 
-
+n_cycles = 50
 pop_size = 20
 max_gen = 100
 de_type = 'rand/1/bin'
-data_size = 30
+data_size = 100
 
 model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
 model_ideal = SemiBatchReactor()
@@ -19,7 +19,7 @@ u_real_optimum = [18.6139787, 0.00110823, 227.6375114]
 u_initial = []
 y_initial = []
 for _ in range(data_size):
-    u_rand = u_real_optimum * (1 + np.random.randn(len(u_real_optimum)) * 0.1)
+    u_rand = u_real_optimum * (1 + np.random.randn(len(u_real_optimum)) * 0.5)
     sim_ideal = model_ideal.simulate(u_rand)
     sim_model = model.simulate(u_rand)
 
@@ -43,5 +43,5 @@ opt_problem.set_optimizer(optimizer)
 
 adaptation = MAGaussianProcesses(model, [np.asarray(u_initial), np.asarray(y_initial)])
 
-rto = RTO(model, model_ideal, opt_problem, adaptation)
+rto = RTO(model, model_ideal, opt_problem, adaptation, cycles=n_cycles)
 rto.run()

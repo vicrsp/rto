@@ -38,7 +38,7 @@ class MAGaussianProcesses:
         with catch_warnings():
             # ignore generated warnings
             simplefilter("ignore")
-            return np.asarray([model.predict(u.reshape(1,-1), return_std=False) for model in self.models])
+            return np.asarray([model.predict(u.reshape(1,-1)) for model in self.models])
 
     def get_model_parameters(self):
         return self.process_model.initial_parameters
@@ -60,5 +60,6 @@ class MAGaussianProcesses:
         # train the model for constraints modifiers
         for col in range(1, cols):
             models.append(self.train(u_train, y_train[:, col]))
-
+        
         self.models = models
+        return [model.score(u_train, y_train[:,idx]) for idx, model in enumerate(models)]

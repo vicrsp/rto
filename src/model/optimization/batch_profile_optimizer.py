@@ -18,7 +18,7 @@ class BatchProfileOptimizer:
         self.ma_model = ma_model
 
         best_fobj, sol = self.optimizer.run(func=self.eval_objective)
-        return best_fobj, sol
+        return float(best_fobj), sol
 
     def save_results(self, x, fx, gx):
         self.xk.append(x)
