@@ -14,31 +14,57 @@ class MAGaussianProcesses:
 
     def initialize_models(self, data):
         u_train, y_train = data
-        _, cols = y_train.shape
-
         self.u_k = list(u_train)
         self.samples_k = list(y_train)
+        self.update_gp_model(u_train, y_train)
 
-        # train the model for objective modifiers
+    def update_gp_model(self, X, y):
+        _, cols = y.shape
+
+        # normalization
+        self.update_normalization_params(X, y)
+        X_norm = self.normalize_input(X)
+
+        # train the GP model 
         models = []
-        models.append(self.train(u_train, y_train[:, 0]))
-
-        # train the model for constraints modifiers
-        for col in range(1, cols):
-            models.append(self.train(u_train, y_train[:, col]))
+        for col in range(cols):
+            models.append(self.train(X_norm, self.normalize_output(y, col)))
 
         self.models = models
+
+    def get_normalization_params(self, X):
+        return np.mean(X, axis=0), np.std(X, axis=0)
+
+    def normalize_input(self, x):
+        u_mean, u_std = self.input_normalization_params
+        return (x - u_mean) / u_std
+
+    def normalize_output(self, y, index):
+        mean, std = self.output_normalization_params[index]
+        return (y[:, index] - mean) / std
+
+    def denormalize_output(self, y, index):
+        mean, std = self.output_normalization_params[index]
+        return y * std + mean
+
+    def update_normalization_params(self, inputs, outputs):
+        _, cols = outputs.shape
+        self.input_normalization_params = self.get_normalization_params(inputs)
+        self.output_normalization_params = [
+            self.get_normalization_params(outputs[:, col]) for col in range(cols)]
 
     def train(self, X, y):
         gp_model = GaussianProcessRegressor()
         return gp_model.fit(X, y)
 
     def get_modifiers(self, u):
+        # normalize
+        u_norm = self.normalize_input(u.reshape(1, -1))
         # catch any warning generated when making a prediction
         with catch_warnings():
             # ignore generated warnings
             simplefilter("ignore")
-            return np.asarray([model.predict(u.reshape(1,-1)) for model in self.models])
+            return np.asarray([self.denormalize_output(model.predict(u_norm), index) for index, model in enumerate(self.models)])
 
     def get_model_parameters(self):
         return self.process_model.initial_parameters
@@ -49,17 +75,7 @@ class MAGaussianProcesses:
         self.samples_k.append(samples)
         # get the data that will be used for training
         # TODO: limit amount of data used to train
-        u_train = np.asarray(self.u_k)
-        y_train = np.asarray(self.samples_k)
-        _, cols = y_train.shape
+        u_train = np.asarray(self.u_k[-30:])
+        y_train = np.asarray(self.samples_k[-30:])
 
-        # train the model for objective modifiers
-        models = []
-        models.append(self.train(u_train, y_train[:, 0]))
-
-        # train the model for constraints modifiers
-        for col in range(1, cols):
-            models.append(self.train(u_train, y_train[:, col]))
-        
-        self.models = models
-        return [model.score(u_train, y_train[:,idx]) for idx, model in enumerate(models)]
+        self.update_gp_model(u_train, y_train)

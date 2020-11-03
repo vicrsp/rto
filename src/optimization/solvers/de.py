@@ -159,7 +159,7 @@ class DifferentialEvolution:
 
         return np.asarray(survivors)
 
-    def run(self, func, debug=True):
+    def run(self, func, debug=False):
         self.reset()
         self.fobj = func
         self.initialize_population()
@@ -188,4 +188,7 @@ class DifferentialEvolution:
                 # print('Best sol: {}'.format(
                 #     self.denormalize(self.best_solution)))
 
-        return self.best_objective, self.denormalize(self.best_solution).flatten()
+        if(self.best_objective != np.Infinity):
+            return self.best_objective, self.denormalize(self.best_solution).flatten()
+        else:
+            return np.Infinity, None

@@ -105,4 +105,4 @@ class SemiBatchReactor:
         Cb_tf = sim_results.y[1][-1]
         Cd_tf = sim_results.y[3][-1]
         
-        return np.asarray([Cb_tf, Cd_tf, x[0] - x[2]])
+        return np.asarray([Cb_tf, Cd_tf])
