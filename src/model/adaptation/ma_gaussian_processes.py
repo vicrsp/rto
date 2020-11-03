@@ -1,8 +1,9 @@
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
 from warnings import simplefilter
-
 
 class MAGaussianProcesses:
     def __init__(self, process_model, initial_data):
@@ -25,33 +26,26 @@ class MAGaussianProcesses:
         self.update_normalization_params(X, y)
         X_norm = self.normalize_input(X)
 
-        # train the GP model 
+        # train the GP model
         models = []
         for col in range(cols):
             models.append(self.train(X_norm, self.normalize_output(y, col)))
 
         self.models = models
 
-    def get_normalization_params(self, X):
-        return np.mean(X, axis=0), np.std(X, axis=0)
-
     def normalize_input(self, x):
-        u_mean, u_std = self.input_normalization_params
-        return (x - u_mean) / u_std
+        return self.input_scaler.transform(x)
 
     def normalize_output(self, y, index):
-        mean, std = self.output_normalization_params[index]
-        return (y[:, index] - mean) / std
+        return self.output_scalers[index].transform(y[:, index].reshape(-1, 1))
 
     def denormalize_output(self, y, index):
-        mean, std = self.output_normalization_params[index]
-        return y * std + mean
+        return self.output_scalers[index].inverse_transform(y).flatten()
 
     def update_normalization_params(self, inputs, outputs):
         _, cols = outputs.shape
-        self.input_normalization_params = self.get_normalization_params(inputs)
-        self.output_normalization_params = [
-            self.get_normalization_params(outputs[:, col]) for col in range(cols)]
+        self.input_scaler = StandardScaler().fit(inputs)
+        self.output_scalers = [StandardScaler().fit(outputs[:, col].reshape(-1, 1)) for col in range(cols)]
 
     def train(self, X, y):
         gp_model = GaussianProcessRegressor()
@@ -74,8 +68,16 @@ class MAGaussianProcesses:
         self.u_k.append(u)
         self.samples_k.append(samples)
         # get the data that will be used for training
-        # TODO: limit amount of data used to train
-        u_train = np.asarray(self.u_k[-30:])
-        y_train = np.asarray(self.samples_k[-30:])
+        # from the k-nearest neighbors
+        # TODO: find neighbors excluding last sample?
+        scaler = MinMaxScaler()
+        u_norm = scaler.fit_transform(np.asarray(self.u_k))
+        nbrs = NearestNeighbors(n_neighbors=20, algorithm='ball_tree').fit(u_norm)
+        _, indices = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
+
+        # TODO: filter points based on distance
+
+        u_train = np.asarray(self.u_k)[indices.flatten(),:]
+        y_train = np.asarray(self.samples_k)[indices.flatten(),:]
 
         self.update_gp_model(u_train, y_train)

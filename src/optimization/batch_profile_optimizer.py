@@ -1,20 +1,33 @@
 import numpy as np
-from .solvers.de import DifferentialEvolution
+from scipy.optimize import differential_evolution, Bounds, NonlinearConstraint
+
 
 class BatchProfileOptimizer:
-    def __init__(self, ub, lb, g, solver='de/rand/1/bin'):
+    def __init__(self, ub, lb, g, solver='de_scipy'):
         self.lb = lb
         self.ub = ub
-        self.g = np.asarray(g)
+        self.g = g
         self.solver = solver
 
-    def set_optimizer(self, ub, lb):
-        if(self.solver == 'de/rand/1/bin'):
-            optimizer = DifferentialEvolution(
-                lb=lb, ub=ub, callback=self.save_results, max_generations=100, pop_size=20, de_type='rand/1/bin')
-            self.optimizer = optimizer
-        else:
-            self.optimizer = None
+    def optimize(self, ub, lb, process_model, ma_model):
+        bounds = Bounds(lb, ub)
+
+        def constraints(x):
+            sim_results = process_model.simulate(x)
+            modifiers = ma_model.get_modifiers(x)
+            gm = modifiers[1:].reshape(-1,)
+            g = process_model.get_constraints(x, sim_results).reshape(-1,) + gm
+            return g
+
+        def func(x):
+            sim_results = process_model.simulate(x)
+            modifiers = ma_model.get_modifiers(x)
+            return process_model.get_objective(sim_results) + float(modifiers[0])
+
+        nlc = NonlinearConstraint(constraints, -np.inf, self.g)
+        result = differential_evolution(
+            func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc)
+        return result.fun, result.x
 
     def run(self, process_model, ma_model, lb, ub):
         self.process_model = process_model
@@ -22,15 +35,8 @@ class BatchProfileOptimizer:
         self.fxk = []
         self.gk = []
         self.ma_model = ma_model
-        self.set_optimizer(ub, lb)
-
-        best_fobj, sol = self.optimizer.run(func=self.eval_objective)
-        return float(best_fobj), sol
-
-    def save_results(self, x, fx, gx):
-        self.xk.append(x)
-        self.fxk.append(fx)
-        self.gk.append(gx)
+        best_fobj, sol = self.optimize(ub, lb, process_model, ma_model)
+        return best_fobj, sol
 
     def eval_objective(self, x):
         sim_results = self.process_model.simulate(x)

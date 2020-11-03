@@ -10,18 +10,19 @@ sys.path.append(lib_path)
 
 
 class RTO:
-    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, cycles=10, db_file='/mnt/d/rto_data/rto_test.db'):
+    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db'):
         self.md = RTODataModel(db_file)
-        self.cycles = cycles
+        self.iterations = iterations
         self.optimization_problem = optimization_problem
         self.adaptation_strategy = adaptation_strategy
         self.process_model = process_model
         self.real_process = real_process
         self.k_filter = 0.4
         self.delta_input = 0.3  # %
+        self.noise_level = 0.01  # %
 
-    def set_num_cycles(self, cycles):
-        self.cycles = cycles
+    def set_iterations(self, iterations):
+        self.iterations = iterations
 
     def filter_input(self, xnew, xold):
         return xold + (xnew - xold) * self.k_filter
@@ -31,11 +32,13 @@ class RTO:
         rto_id = self.md.create_rto(
             'test at {}'.format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")), rto_type='ma-gp')
         f_input = u_0
-        for i in range(self.cycles):
+        for i in range(self.iterations):
             print('iteration {} started!'.format(i))
 
-            lower_bound = self.optimization_problem.lb # (1 - self.delta_input) * np.asarray(f_input)
-            upper_bound = self.optimization_problem.ub #(1 + self.delta_input) * np.asarray(f_input)
+            # (1 - self.delta_input) * np.asarray(f_input)
+            lower_bound = self.optimization_problem.lb
+            # (1 + self.delta_input) * np.asarray(f_input)
+            upper_bound = self.optimization_problem.ub
 
             #lower_bound = np.maximum(lower_bound, self.optimization_problem.lb)
             #upper_bound = np.minimum(upper_bound, self.optimization_problem.ub)
@@ -49,14 +52,9 @@ class RTO:
 
             sim_real = self.real_process.simulate(f_input)
             sim_model = self.process_model.simulate(f_input)
-
+            # with 5% gaussian noise
             fr, gr = self.real_process.get_objective(
-                sim_real), self.real_process.get_constraints(f_input, sim_real)
-
-            # 5% additive gaussian noise
-            fr = fr + np.random.normal(0, 0.05*(fr ** 2))
-            gr = gr + \
-                np.asarray([np.random.normal(0, 0.05*(gi ** 2)) for gi in gr])
+                sim_real, self.noise_level), self.real_process.get_constraints(f_input, sim_real, self.noise_level)
 
             fm, gm = self.process_model.get_objective(
                 sim_model), self.process_model.get_constraints(f_input, sim_model)
