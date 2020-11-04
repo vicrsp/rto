@@ -18,7 +18,7 @@ g_plant = np.array([0.025, 0.15])
 initial_data = generate_samples_uniform(model, plant, g_plant, u_0, data_size)
 
 opt_problem = BatchProfileOptimizer(
-    ub=[30, 0.002, 250], lb=[0, 0, 200], g=[0.025, 0.15], solver='slsqp_scipy')
+    ub=[30, 0.002, 250], lb=[0, 0, 200], g=[0.025, 0.15], solver='ipopt')
 
 adaptation = MAGaussianProcesses(model, initial_data)
 
