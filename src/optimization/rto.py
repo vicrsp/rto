@@ -44,7 +44,7 @@ class RTO:
             #upper_bound = np.minimum(upper_bound, self.optimization_problem.ub)
 
             _, f_input = self.optimization_problem.run(
-                self.process_model, self.adaptation_strategy, lower_bound, upper_bound)
+                self.process_model, self.adaptation_strategy, lower_bound, upper_bound, f_input)
 
             if(i > 0):
                 f_input = self.filter_input(f_input, f_previous)
