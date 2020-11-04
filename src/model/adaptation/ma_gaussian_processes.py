@@ -5,6 +5,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
 from warnings import simplefilter
 
+
 class MAGaussianProcesses:
     def __init__(self, process_model, initial_data):
         self.process_model = process_model
@@ -12,6 +13,7 @@ class MAGaussianProcesses:
         self.samples_k = []
         self.models = None
         self.initialize_models(initial_data)
+        self.k_neighbors = 20
 
     def initialize_models(self, data):
         u_train, y_train = data
@@ -45,7 +47,8 @@ class MAGaussianProcesses:
     def update_normalization_params(self, inputs, outputs):
         _, cols = outputs.shape
         self.input_scaler = StandardScaler().fit(inputs)
-        self.output_scalers = [StandardScaler().fit(outputs[:, col].reshape(-1, 1)) for col in range(cols)]
+        self.output_scalers = [StandardScaler().fit(
+            outputs[:, col].reshape(-1, 1)) for col in range(cols)]
 
     def train(self, X, y):
         gp_model = GaussianProcessRegressor()
@@ -70,14 +73,18 @@ class MAGaussianProcesses:
         # get the data that will be used for training
         # from the k-nearest neighbors
         # TODO: find neighbors excluding last sample?
-        scaler = MinMaxScaler()
-        u_norm = scaler.fit_transform(np.asarray(self.u_k))
-        nbrs = NearestNeighbors(n_neighbors=20, algorithm='ball_tree').fit(u_norm)
-        _, indices = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
+        if(len(self.u_k) > self.k_neighbors):
+            scaler = MinMaxScaler()
+            u_norm = scaler.fit_transform(np.asarray(self.u_k))
+            nbrs = NearestNeighbors(
+                n_neighbors=self.k_neighbors, algorithm='ball_tree').fit(u_norm)
+            _, indices = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
 
-        # TODO: filter points based on distance
-
-        u_train = np.asarray(self.u_k)[indices.flatten(),:]
-        y_train = np.asarray(self.samples_k)[indices.flatten(),:]
+            # TODO: filter points based on distance?
+            u_train = np.asarray(self.u_k)[indices.flatten(), :]
+            y_train = np.asarray(self.samples_k)[indices.flatten(), :]
+        else:
+            u_train = np.asarray(self.u_k)
+            y_train = np.asarray(self.samples_k)
 
         self.update_gp_model(u_train, y_train)

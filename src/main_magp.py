@@ -9,16 +9,15 @@ from model.utils import generate_samples_uniform
 n_iterations = 120
 pop_size = 20
 max_gen = 100
-de_type = 'rand/1/bin'
-data_size = 100
+data_size = 5
 
 model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
 plant = SemiBatchReactor()
 u_real_optimum = [18.6139787, 0.00110823, 227.6375114]
-u_0 = [15, 0.0009, 230]
+u_0 = [10, 0.0005, 240]
 g_plant = np.array([0.025, 0.15])
 
-initial_data = generate_samples_uniform(model, plant, g_plant, u_0)
+initial_data = generate_samples_uniform(model, plant, g_plant, u_0, data_size)
 
 opt_problem = BatchProfileOptimizer(
     ub=[30, 0.002, 250], lb=[0, 0, 200], g=[0.025, 0.15])
