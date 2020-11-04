@@ -7,8 +7,6 @@ from model.process.semi_batch import SemiBatchReactor
 from model.utils import generate_samples_uniform
 
 n_iterations = 120
-pop_size = 20
-max_gen = 100
 data_size = 5
 
 model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
