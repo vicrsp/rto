@@ -102,7 +102,7 @@ class RTODataModel:
         sql = '''SELECT rto.id, rto.name, rto.type, run.id, iteration, var_name, value
                 FROM rto JOIN run ON run.rto_id = rto.id
                 JOIN result_variable_values on result_variable_values.run_id = run.id
-                WHERE rto.id >= (?) AND rto.type = (?) ORDER BY rto.id '''
+                WHERE rto.id = (?) AND rto.type = (?) ORDER BY rto.id '''
         cur.execute(sql, (rto_id, rto_type))
         db_results = cur.fetchall()
         results = []

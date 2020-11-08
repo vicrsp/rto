@@ -2,8 +2,7 @@ import numpy as np
 
 
 class DifferentialEvolution:
-    def __init__(self, func, lb, ub, mutation_prob=0.5, pop_size=10, max_generations=100, de_type='rand/1/bin', callback=None):
-        self.fobj = func
+    def __init__(self, lb, ub, mutation_prob=0.5, pop_size=10, max_generations=100, de_type='rand/1/bin', callback=None):
         self.lb = np.asarray(lb).reshape(1, -1)
         self.ub = np.asarray(ub).reshape(1, -1)
         self.population_size = pop_size
@@ -160,15 +159,17 @@ class DifferentialEvolution:
 
         return np.asarray(survivors)
 
-    def run(self, debug=True):
+    def run(self, func, debug=False):
+        self.reset()
+        self.fobj = func
         self.initialize_population()
         for i in range(self.max_generations):
             fobj, g = self.evaluate_population_cost(self.population)
             v = []
             # use penalization for base vector selection only
-            fobj_penalized = fobj + 1000 * np.maximum(np.zeros(self.population_size), np.max(np.asarray(g), axis=1))
+            # fobj_penalized = fobj + 1000 * np.maximum(np.zeros(self.population_size), np.max(np.asarray(g), axis=1))
             for _ in range(self.population_size):
-                r1, base = self.select_base_vector(self.population, fobj_penalized)
+                r1, base = self.select_base_vector(self.population, None)
                 difference = self.select_difference_vector(r1, self.population)
                 scale_factor = self.select_scale_factor()
                 v.append(self.mutate(base, scale_factor, difference))
@@ -187,4 +188,7 @@ class DifferentialEvolution:
                 # print('Best sol: {}'.format(
                 #     self.denormalize(self.best_solution)))
 
-        return self.best_objective, self.denormalize(self.best_solution).flatten()
+        if(self.best_objective != np.Infinity):
+            return self.best_objective, self.denormalize(self.best_solution).flatten()
+        else:
+            return np.Infinity, None
