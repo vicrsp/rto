@@ -10,11 +10,12 @@ from scipy.integrate import odeint, solve_ivp
 # Fa and Vr are not manipulated
 # Known optimum: Tr:89.647ºC, Fb:4.7836kg/s
 class WilliamsOttoReactor:
-    def __init__(self, y0, k = [1.6599*(10**6), 7.2117*(10**8), 2.6745*(10**12)]):
+    def __init__(self, y0, k = [1.6599*(10**6), 7.2117*(10**8), 2.6745*(10**12)], eta=[12000, 15000, 20000]):
         self.stoptime = 250
         self.numpoints = 100
         self.y0 = y0
         self.k = k
+        self.eta = eta
 
     def r_to_c(self, r):
         return (r - 491.67) * 5 / 9 
@@ -33,10 +34,11 @@ class WilliamsOttoReactor:
         Vr = 2.0 #ft*3
 
         k1, k2, k3 = self.k
+        eta1, eta2, eta3 = self.eta
 
-        k1 = k1*np.exp(-12000/Tr) #s^-1
-        k2 = k2*np.exp(-15000/Tr) #s^-1
-        k3 = k3*np.exp(-20000/Tr) #s^-1
+        k1 = k1*np.exp(-eta1/Tr) #s^-1
+        k2 = k2*np.exp(-eta2/Tr) #s^-1
+        k3 = k3*np.exp(-eta3/Tr) #s^-1
 
         df = [Fa - Fr * Xa - k1 * Xa * Xb * Vr,
             Fb - Fr * Xb - (k1 * Xa * Xb * Vr) - (k2 * Xb * Xc * Vr),
@@ -51,5 +53,5 @@ class WilliamsOttoReactor:
     def simulate(self, x):
         t = [self.stoptime * float(i) / (self.numpoints - 1)
              for i in range(self.numpoints)]
-        xnew = [0.002, x[0], x[1], x[2], 0]
+        xnew = x
         return solve_ivp(fun=self.odecallback, t_span=[0, self.stoptime], t_eval=t, y0=self.y0, args=(xnew,))
