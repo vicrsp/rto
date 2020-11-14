@@ -136,4 +136,4 @@ def init_rto_db(database):
 
 
 if __name__ == '__main__':
-    init_rto_db("/mnt/d/rto_data/rto_test.db")
+    init_rto_db("/mnt/d/rto_data/rto_poc_exact_slsqp.db")

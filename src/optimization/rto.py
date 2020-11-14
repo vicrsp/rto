@@ -10,7 +10,7 @@ sys.path.append(lib_path)
 
 
 class RTO:
-    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db'):
+    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp'):
         self.md = RTODataModel(db_file)
         self.iterations = iterations
         self.optimization_problem = optimization_problem
@@ -20,6 +20,7 @@ class RTO:
         self.k_filter = 0.4
         self.delta_input = 0.3  # %
         self.noise_level = 0.01  # %
+        self.experiment_name = name
 
     def set_iterations(self, iterations):
         self.iterations = iterations
@@ -30,10 +31,10 @@ class RTO:
     def run(self, u_0):
 
         rto_id = self.md.create_rto(
-            'test at {}'.format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")), rto_type='ma-gp')
+            'test at {}'.format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")), rto_type=self.experiment_name)
         f_input = u_0
         for i in range(self.iterations):
-            print('iteration {} started!'.format(i))
+            print('{}: iteration {} started!'.format(self.experiment_name, i))
 
             # (1 - self.delta_input) * np.asarray(f_input)
             lower_bound = self.optimization_problem.lb
@@ -68,6 +69,7 @@ class RTO:
                             'g_real': ','.join(str(v) for v in gr), 'g_model': ','.join(str(v) for v in gm),
                             'u': ','.join(str(v) for v in f_input)}
             self.md.save_results(run_id, results_dict)
-            print('cost_model: {}'.format(fm))
-            print('cost_real: {}'.format(fr))
-            print('f_input: {}'.format(f_input))
+            print('{}: u={}'.format(self.experiment_name, fr - fm))
+            #print('cost_model: {}'.format(fm))
+            #print('cost_real: {}'.format(fr))
+            #print('f_input: {}'.format(f_input))

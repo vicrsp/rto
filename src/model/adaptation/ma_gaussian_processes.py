@@ -73,6 +73,7 @@ class MAGaussianProcesses:
         # get the data that will be used for training
         # from the k-nearest neighbors
         # TODO: find neighbors excluding last sample?
+        # TODO: how to deal with overfitting?
         if(len(self.u_k) > self.k_neighbors):
             scaler = MinMaxScaler()
             u_norm = scaler.fit_transform(np.asarray(self.u_k))

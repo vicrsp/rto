@@ -27,12 +27,20 @@ class BatchProfileOptimizer:
             return process_model.get_objective(sim_results) + float(modifiers[0])
 
         nlc = NonlinearConstraint(constraints, -np.inf, self.g)
-        if(self.solver == 'de_scipy'):
+        if(self.solver == 'de_scipy_best1bin'):
             result = differential_evolution(
-                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc)
+                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc, strategy='best1bin')
+            return result.fun, result.x
+        elif(self.solver == 'de_scipy_rand1bin'):
+            result = differential_evolution(
+                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc, strategy='rand1bin')
             return result.fun, result.x
         elif(self.solver == 'slsqp_scipy'):
             result = minimize(func, x_start, method='SLSQP',
+                              bounds=bounds, constraints=nlc, options={'disp': False})
+            return result.fun, result.x
+        elif(self.solver == 'trustcon_scipy'):
+            result = minimize(func, x_start, method='trust-constr',
                               bounds=bounds, constraints=nlc, options={'disp': True})
             return result.fun, result.x
         elif(self.solver == 'ipopt'):
