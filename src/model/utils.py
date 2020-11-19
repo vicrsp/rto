@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def generate_samples_uniform(model, plant, plant_constrains, u_0, size=30, offset=0.9):
+def generate_samples_uniform(model, plant, plant_constrains, u_0, size=30, offset=0.8):
     def rand_func(x):
         scale = (2 * (1 - offset))
         return x * (np.random.rand(len(x)) * scale + offset)

@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import differential_evolution, minimize, approx_fprime, Bounds, NonlinearConstraint
 import ipopt
 
-
 class BatchProfileOptimizer:
     def __init__(self, ub, lb, g, solver='de_scipy'):
         self.lb = lb
@@ -39,19 +38,15 @@ class BatchProfileOptimizer:
             result = minimize(func, x_start, method='SLSQP',
                               bounds=bounds, constraints=nlc, options={'disp': False})
             return result.fun, result.x
-        elif(self.solver == 'trustcon_scipy'):
-            result = minimize(func, x_start, method='trust-constr',
-                              bounds=bounds, constraints=nlc, options={'disp': True})
-            return result.fun, result.x
         elif(self.solver == 'ipopt'):
             nlp = ipopt.problem(
-            n=len(x_start),
-            m=len(self.g),
-            problem_obj=IPOPTProblem(process_model, ma_model),
-            lb=lb,
-            ub=ub,
-            cl=[-np.inf] * len(self.g),
-            cu=self.g
+                n=len(x_start),
+                m=len(self.g),
+                problem_obj=IPOPTProblem(process_model, ma_model),
+                lb=lb,
+                ub=ub,
+                cl=[-np.inf] * len(self.g),
+                cu=self.g
             )
 
             # IMPORTANT: need to use limited-memory / lbfgs here as we didn't give a valid hessian-callback
@@ -122,12 +117,12 @@ class IPOPTProblem(object):
     def jacobian(self, x):
         # callback for jacobian
         return np.concatenate([
-            approx_fprime(x, self.constraint_0, self.num_diff_eps), 
+            approx_fprime(x, self.constraint_0, self.num_diff_eps),
             approx_fprime(x, self.constraint_1, self.num_diff_eps)])
 
     def hessian(self, x, lagrange, obj_factor):
         return False  # we will use quasi-newton approaches to use hessian-info
-    
+
     # progress callback
     def intermediate(
             self,
@@ -142,7 +137,7 @@ class IPOPTProblem(object):
             alpha_du,
             alpha_pr,
             ls_trials
-            ):
+    ):
         pass
         # if(iter_count % 10 == 0):
         #     print("Objective value at iteration #%d is - %g" % (iter_count, obj_value))

@@ -7,13 +7,15 @@ from warnings import simplefilter
 
 
 class MAGaussianProcesses:
-    def __init__(self, process_model, initial_data):
+    def __init__(self, process_model, initial_data, neighbors_type='k_last', k_neighbors=10, filter_data=False):
         self.process_model = process_model
         self.u_k = []
         self.samples_k = []
         self.models = None
         self.initialize_models(initial_data)
-        self.k_neighbors = 20
+        self.k_neighbors = k_neighbors
+        self.neighbors_type = neighbors_type
+        self.filter_data = filter_data
 
     def initialize_models(self, data):
         u_train, y_train = data
@@ -67,25 +69,42 @@ class MAGaussianProcesses:
         return self.process_model.initial_parameters
 
     def adapt(self, u, samples):
-        # update the data available
-        self.u_k.append(u)
-        self.samples_k.append(samples)
-        # get the data that will be used for training
-        # from the k-nearest neighbors
-        # TODO: find neighbors excluding last sample?
-        # TODO: how to deal with overfitting?
-        if(len(self.u_k) > self.k_neighbors):
+        data_size = len(self.u_k)
+        neighbors_size = min(self.k_neighbors, data_size)
+
+        if(self.neighbors_type == 'k_last'): # use data from the k last operating points
+            u_train = np.asarray(self.u_k[-neighbors_size:])
+            y_train = np.asarray(self.samples_k[-neighbors_size:])
+        elif(self.neighbors_type == 'k_nearest'): # use data from the k nearest operating points
+            # scale the input data to [0,1] interval
+            scaler = MinMaxScaler()
+            u_norm = scaler.fit_transform(np.asarray(self.u_k))
+            # find the neighbors
+            nbrs = NearestNeighbors(
+                n_neighbors=neighbors_size, algorithm='ball_tree').fit(u_norm)
+            _, indices = nbrs.kneighbors(
+                scaler.transform(u.reshape(1, -1)))
+            
+            if(data_size > self.k_neighbors):
+                u_train = np.asarray(self.u_k)[indices.flatten(), :]
+                y_train = np.asarray(self.samples_k)[indices.flatten(), :]
+            else:
+                u_train = np.asarray(self.u_k)
+                y_train = np.asarray(self.samples_k)
+
+        self.update_gp_model(u_train, y_train)
+        if(self.filter_data == True):
+            # if filter is on, only append new data to the model is sufficiently far from
             scaler = MinMaxScaler()
             u_norm = scaler.fit_transform(np.asarray(self.u_k))
             nbrs = NearestNeighbors(
-                n_neighbors=self.k_neighbors, algorithm='ball_tree').fit(u_norm)
-            _, indices = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
-
-            # TODO: filter points based on distance?
-            u_train = np.asarray(self.u_k)[indices.flatten(), :]
-            y_train = np.asarray(self.samples_k)[indices.flatten(), :]
+                n_neighbors=neighbors_size, algorithm='ball_tree').fit(u_norm)
+            distances, _ = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
+            # if there is at least one operating point below the threshold
+            # then we should be able to ignore the new data
+            if(np.all(distances > 0.01)):
+                self.u_k.append(u)
+                self.samples_k.append(samples)
         else:
-            u_train = np.asarray(self.u_k)
-            y_train = np.asarray(self.samples_k)
-
-        self.update_gp_model(u_train, y_train)
+            self.u_k.append(u)
+            self.samples_k.append(samples)

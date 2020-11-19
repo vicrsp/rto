@@ -69,7 +69,7 @@ class RTO:
                             'g_real': ','.join(str(v) for v in gr), 'g_model': ','.join(str(v) for v in gm),
                             'u': ','.join(str(v) for v in f_input)}
             self.md.save_results(run_id, results_dict)
-            print('{}: u={}'.format(self.experiment_name, fr - fm))
-            #print('cost_model: {}'.format(fm))
+            #print('{}: u={}'.format(self.experiment_name, fr - fm))
+            print('{}: cost_model= {}; cost_real= {}'.format(self.experiment_name, fm, fr))
             #print('cost_real: {}'.format(fr))
             #print('f_input: {}'.format(f_input))
