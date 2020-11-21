@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import differential_evolution, minimize, approx_fprime, Bounds, NonlinearConstraint
 import ipopt
 
-
 class BatchProfileOptimizer:
     def __init__(self, ub, lb, g, solver='de_scipy'):
         self.lb = lb
@@ -27,23 +26,27 @@ class BatchProfileOptimizer:
             return process_model.get_objective(sim_results) + float(modifiers[0])
 
         nlc = NonlinearConstraint(constraints, -np.inf, self.g)
-        if(self.solver == 'de_scipy'):
+        if(self.solver == 'de_scipy_best1bin'):
             result = differential_evolution(
-                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc)
+                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc, strategy='best1bin')
+            return result.fun, result.x
+        elif(self.solver == 'de_scipy_rand1bin'):
+            result = differential_evolution(
+                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc, strategy='rand1bin')
             return result.fun, result.x
         elif(self.solver == 'slsqp_scipy'):
             result = minimize(func, x_start, method='SLSQP',
-                              bounds=bounds, constraints=nlc, options={'disp': True})
+                              bounds=bounds, constraints=nlc, options={'disp': False})
             return result.fun, result.x
         elif(self.solver == 'ipopt'):
             nlp = ipopt.problem(
-            n=len(x_start),
-            m=len(self.g),
-            problem_obj=IPOPTProblem(process_model, ma_model),
-            lb=lb,
-            ub=ub,
-            cl=[-np.inf] * len(self.g),
-            cu=self.g
+                n=len(x_start),
+                m=len(self.g),
+                problem_obj=IPOPTProblem(process_model, ma_model),
+                lb=lb,
+                ub=ub,
+                cl=[-np.inf] * len(self.g),
+                cu=self.g
             )
 
             # IMPORTANT: need to use limited-memory / lbfgs here as we didn't give a valid hessian-callback
@@ -54,13 +57,10 @@ class BatchProfileOptimizer:
             x, info = nlp.solve(x_start)
             return info['obj_val'], np.asarray(x)
 
-    def run(self, process_model, ma_model, lb, ub, x0=None):
+    def run(self, process_model, ma_model, x0=None):
         self.process_model = process_model
-        self.xk = []
-        self.fxk = []
-        self.gk = []
         self.ma_model = ma_model
-        best_fobj, sol = self.optimize(ub, lb, process_model, ma_model, x0)
+        best_fobj, sol = self.optimize(self.ub, self.lb, process_model, ma_model, x0)
         return best_fobj, sol
 
     def eval_objective(self, x):
@@ -114,12 +114,12 @@ class IPOPTProblem(object):
     def jacobian(self, x):
         # callback for jacobian
         return np.concatenate([
-            approx_fprime(x, self.constraint_0, self.num_diff_eps), 
+            approx_fprime(x, self.constraint_0, self.num_diff_eps),
             approx_fprime(x, self.constraint_1, self.num_diff_eps)])
 
     def hessian(self, x, lagrange, obj_factor):
         return False  # we will use quasi-newton approaches to use hessian-info
-    
+
     # progress callback
     def intermediate(
             self,
@@ -134,7 +134,7 @@ class IPOPTProblem(object):
             alpha_du,
             alpha_pr,
             ls_trials
-            ):
+    ):
         pass
         # if(iter_count % 10 == 0):
         #     print("Objective value at iteration #%d is - %g" % (iter_count, obj_value))
