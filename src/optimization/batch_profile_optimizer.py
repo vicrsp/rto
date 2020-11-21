@@ -57,13 +57,10 @@ class BatchProfileOptimizer:
             x, info = nlp.solve(x_start)
             return info['obj_val'], np.asarray(x)
 
-    def run(self, process_model, ma_model, lb, ub, x0=None):
+    def run(self, process_model, ma_model, x0=None):
         self.process_model = process_model
-        self.xk = []
-        self.fxk = []
-        self.gk = []
         self.ma_model = ma_model
-        best_fobj, sol = self.optimize(ub, lb, process_model, ma_model, x0)
+        best_fobj, sol = self.optimize(self.ub, self.lb, process_model, ma_model, x0)
         return best_fobj, sol
 
     def eval_objective(self, x):

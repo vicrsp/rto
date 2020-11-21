@@ -8,8 +8,8 @@ from model.process.semi_batch import SemiBatchReactor
 from model.utils import generate_samples_uniform
 
 n_experiments = 20
-n_iterations = 120
-data_size = 5
+n_iterations = 60
+data_size = 10
 
 model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
 plant = SemiBatchReactor()
@@ -25,7 +25,8 @@ def run_rto_exact():
     opt_problem = BatchProfileOptimizer(
         ub=[30, 0.002, 250], lb=[0, 0, 200], g=[0.025, 0.15], solver='slsqp_scipy')
 
-    adaptation = MAGaussianProcesses(model, initial_data)
+    adaptation = MAGaussianProcesses(
+        model, initial_data, 'k_nearest', filter_data=True)
     u_0_feas = initial_data[0][0]
     rto = RTO(model, plant, opt_problem, adaptation,
               iterations=n_iterations, name='ma-gp-slsqp_scipy')
@@ -35,14 +36,15 @@ def run_rto_exact():
 def run_rto_de_best1bin():
     # DE best1bin algorithm
     initial_data = generate_samples_uniform(
-        model, plant, g_plant, u_0, data_size)
+        model, plant, g_plant, u_0, data_size, offset=0.5)
     opt_problem = BatchProfileOptimizer(
         ub=[30, 0.002, 250], lb=[0, 0, 200], g=[0.025, 0.15], solver='de_scipy_best1bin')
 
-    adaptation = MAGaussianProcesses(model, initial_data)
+    adaptation = MAGaussianProcesses(
+        model, initial_data, 'k_nearest', filter_data=True)
 
     rto = RTO(model, plant, opt_problem, adaptation,
-              iterations=n_iterations, name='ma-gp-de_scipy_best1bin_polish')
+              iterations=n_iterations, name='ma-gp-de_scipy_best1bin')
     rto.run(u_0)
 
 
@@ -55,10 +57,10 @@ def run_rto_de_rand1bin():
     adaptation = MAGaussianProcesses(model, initial_data)
 
     rto = RTO(model, plant, opt_problem, adaptation,
-              iterations=n_iterations, name='ma-gp-de_scipy_rand1bin_polish')
+              iterations=n_iterations, name='ma-gp-de_scipy_rand1bin')
     rto.run(u_0)
 
 
 if __name__ == '__main__':
-    #run_rto_exact()
-    run_rto_de_rand1bin()
+    run_rto_exact()
+    #run_rto_de_best1bin()

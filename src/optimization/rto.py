@@ -28,48 +28,57 @@ class RTO:
     def filter_input(self, xnew, xold):
         return xold + (xnew - xold) * self.k_filter
 
-    def run(self, u_0):
+    def save_initial_data(self, initial_data, rto_id):
+        for index, u0_i in enumerate(initial_data[0]):
+            _, fr, gr, fm, gm = self.calculate_results(u0_i)
+            self.save_results(rto_id, index, fr, gr, fm,
+                              gm, u0_i, 'initialization')
+    
+    def save_results(self, rto_id, index, fr, gr, fm, gm, f_input, run_type='closed-loop'):
+        run_id = self.md.create_run(rto_id, index, run_type)
+        results_dict = {'cost_real': fr, 'cost_model': fm,
+                        'fobj_modifier': fr - fm, 'g_modifiers': ','.join(str(v) for v in (gr-gm)),
+                        'g_real': ','.join(str(v) for v in gr), 'g_model': ','.join(str(v) for v in gm),
+                        'u': ','.join(str(v) for v in f_input)}
+        self.md.save_results(run_id, results_dict)
+        return run_id
 
+    def calculate_results(self, f_input):
+        sim_real = self.real_process.simulate(f_input)
+        sim_model = self.process_model.simulate(f_input)
+        # with 1% gaussian noise
+        fr, gr = self.real_process.get_objective(
+            sim_real, self.noise_level), self.real_process.get_constraints(f_input, sim_real, self.noise_level)
+
+        fm, gm = self.process_model.get_objective(
+            sim_model), self.process_model.get_constraints(f_input, sim_model)
+        data = np.append(np.asarray(fr - fm), gr - gm)
+
+        return data, fr, gr, fm, gm
+
+    def run(self, u_0):
         rto_id = self.md.create_rto(
             'test at {}'.format(datetime.now().strftime("%d/%m/%Y %H:%M:%S")), rto_type=self.experiment_name)
         f_input = u_0
+        self.save_initial_data(self.adaptation_strategy.initial_data, rto_id)
+        initial_data_size = len(self.adaptation_strategy.initial_data[0])
+
         for i in range(self.iterations):
-            print('{}: iteration {} started!'.format(self.experiment_name, i))
-
-            # (1 - self.delta_input) * np.asarray(f_input)
-            lower_bound = self.optimization_problem.lb
-            # (1 + self.delta_input) * np.asarray(f_input)
-            upper_bound = self.optimization_problem.ub
-
-            #lower_bound = np.maximum(lower_bound, self.optimization_problem.lb)
-            #upper_bound = np.minimum(upper_bound, self.optimization_problem.ub)
+            iteration = i + initial_data_size
+            print('{}: iteration {} started!'.format(self.experiment_name, iteration))
 
             _, f_input = self.optimization_problem.run(
-                self.process_model, self.adaptation_strategy, lower_bound, upper_bound, f_input)
+                self.process_model, self.adaptation_strategy, f_input)
 
             if(i > 0):
                 f_input = self.filter_input(f_input, f_previous)
             f_previous = f_input
 
-            sim_real = self.real_process.simulate(f_input)
-            sim_model = self.process_model.simulate(f_input)
-            # with 5% gaussian noise
-            fr, gr = self.real_process.get_objective(
-                sim_real, self.noise_level), self.real_process.get_constraints(f_input, sim_real, self.noise_level)
-
-            fm, gm = self.process_model.get_objective(
-                sim_model), self.process_model.get_constraints(f_input, sim_model)
-            data = np.append(np.asarray(fr - fm), gr - gm)
-
+            # Calculate the results
+            data, fr, gr, fm, gm = self.calculate_results(f_input)
+            # Exexute the adaptation strategy
             self.adaptation_strategy.adapt(f_input, data)
-
-            run_id = self.md.create_run(rto_id, i, 'completed')
-            results_dict = {'cost_real': fr, 'cost_model': fm,
-                            'fobj_modifier': fr - fm, 'g_modifiers': ','.join(str(v) for v in (gr-gm)),
-                            'g_real': ','.join(str(v) for v in gr), 'g_model': ','.join(str(v) for v in gm),
-                            'u': ','.join(str(v) for v in f_input)}
-            self.md.save_results(run_id, results_dict)
-            #print('{}: u={}'.format(self.experiment_name, fr - fm))
-            print('{}: cost_model= {}; cost_real= {}'.format(self.experiment_name, fm, fr))
-            #print('cost_real: {}'.format(fr))
-            #print('f_input: {}'.format(f_input))
+            # Save the results
+            self.save_results(rto_id, iteration, fr, gr, fm, gm, f_input)
+            print('{}: cost_model= {}; cost_real= {}'.format(
+                self.experiment_name, fm, fr))

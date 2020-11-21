@@ -7,7 +7,7 @@ from warnings import simplefilter
 
 
 class MAGaussianProcesses:
-    def __init__(self, process_model, initial_data, neighbors_type='k_last', k_neighbors=10, filter_data=False):
+    def __init__(self, process_model, initial_data, neighbors_type='k_last', k_neighbors=10, filter_data=True):
         self.process_model = process_model
         self.u_k = []
         self.samples_k = []
@@ -16,6 +16,7 @@ class MAGaussianProcesses:
         self.k_neighbors = k_neighbors
         self.neighbors_type = neighbors_type
         self.filter_data = filter_data
+        self.initial_data = initial_data
 
     def initialize_models(self, data):
         u_train, y_train = data
@@ -105,6 +106,8 @@ class MAGaussianProcesses:
             if(np.all(distances > 0.01)):
                 self.u_k.append(u)
                 self.samples_k.append(samples)
+            else:
+                print('Data point ignored. Distances: {}'.format(distances))
         else:
             self.u_k.append(u)
             self.samples_k.append(samples)
