@@ -99,14 +99,14 @@ class SemiBatchReactor:
         Cc_tf = sim_results.y[2][-1]
         V_tf = sim_results.y[4][-1]
         fx = Cc_tf * V_tf
-        return -fx if noise == None else -fx + np.random.normal(scale=noise * fx)
+        return -fx if noise == None else -fx * (1 + np.random.normal(scale=noise))
 
     def get_constraints(self, x, sim_results, noise=None):
         Cb_tf = sim_results.y[1][-1]
         Cd_tf = sim_results.y[3][-1]
 
         if(noise != None):
-            Cb_tf = Cb_tf + np.random.normal(scale=noise * Cb_tf)
-            Cd_tf = Cd_tf + np.random.normal(scale=noise * Cd_tf)
+            Cb_tf = Cb_tf * (1 + np.random.normal(scale=noise))
+            Cd_tf = Cd_tf * (1 + np.random.normal(scale=noise))
 
         return np.asarray([Cb_tf, Cd_tf])

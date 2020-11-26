@@ -14,7 +14,7 @@ def generate_samples_gaussian(model, plant, plant_constrains, u_0, size=30, scal
     return generate_samples(model, plant, plant_constrains, u_0, rand_func, size)
 
 
-def generate_samples(model, plant, plant_constrains, u_0, random_func, size):
+def generate_samples(model, plant, plant_constrains, u_0, random_func, size, noise = 0.05):
     u_initial = []
     y_initial = []
     i = 0
@@ -24,7 +24,7 @@ def generate_samples(model, plant, plant_constrains, u_0, random_func, size):
         sim_model = model.simulate(u_rand)
 
         fr, gr = plant.get_objective(
-            sim_ideal, noise=0.01), plant.get_constraints(u_rand, sim_ideal, noise=0.01)
+            sim_ideal, noise=noise), plant.get_constraints(u_rand, sim_ideal, noise=noise)
 
         fm, gm = model.get_objective(
             sim_model), model.get_constraints(u_rand, sim_model)

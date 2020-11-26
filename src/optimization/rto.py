@@ -10,7 +10,7 @@ sys.path.append(lib_path)
 
 
 class RTO:
-    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp'):
+    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp', noise=0.05):
         self.md = RTODataModel(db_file)
         self.iterations = iterations
         self.optimization_problem = optimization_problem
@@ -18,8 +18,7 @@ class RTO:
         self.process_model = process_model
         self.real_process = real_process
         self.k_filter = 0.4
-        self.delta_input = 0.3  # %
-        self.noise_level = 0.01  # %
+        self.noise_level = noise  # %
         self.experiment_name = name
 
     def set_iterations(self, iterations):

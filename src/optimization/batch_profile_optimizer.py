@@ -28,15 +28,15 @@ class BatchProfileOptimizer:
         nlc = NonlinearConstraint(constraints, -np.inf, self.g)
         if(self.solver == 'de_scipy_best1bin'):
             result = differential_evolution(
-                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc, strategy='best1bin')
+                func, bounds, polish=False, constraints=nlc, atol=0.000001, strategy='best1bin')
             return result.fun, result.x
         elif(self.solver == 'de_scipy_rand1bin'):
             result = differential_evolution(
-                func, bounds, maxiter=50, popsize=20, polish=False, constraints=nlc, strategy='rand1bin')
+                func, bounds, polish=False, constraints=nlc, atol=0.000001, strategy='rand1bin')
             return result.fun, result.x
         elif(self.solver == 'slsqp_scipy'):
             result = minimize(func, x_start, method='SLSQP',
-                              bounds=bounds, constraints=nlc, options={'disp': False})
+                              bounds=bounds, constraints=nlc, tol=0.000001, options={'disp': False})
             return result.fun, result.x
         elif(self.solver == 'ipopt'):
             nlp = ipopt.problem(
