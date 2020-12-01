@@ -70,7 +70,6 @@ class RTO:
             iteration = i + initial_data_size
             print('{}: iteration {} started!'.format(
                 self.experiment_name, iteration))
-            print(end - start)
 
             start = timer()
             _, f_input = self.optimization_problem.run(
