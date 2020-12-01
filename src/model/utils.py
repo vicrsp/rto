@@ -1,20 +1,20 @@
 import numpy as np
 
 
-def generate_samples_uniform(model, plant, plant_constrains, u_0, size=30, offset=0.8):
+def generate_samples_uniform(model, plant, plant_constrains, u_0, size=30, offset=0.8, noise=0.01):
     def rand_func(x):
         scale = (2 * (1 - offset))
         return x * (np.random.rand(len(x)) * scale + offset)
-    return generate_samples(model, plant, plant_constrains, u_0, rand_func, size)
+    return generate_samples(model, plant, plant_constrains, u_0, rand_func, size, noise)
 
 
 def generate_samples_gaussian(model, plant, plant_constrains, u_0, size=30, scale=0.01):
     def rand_func(x):
-        return np.asarray([(1 + np.random.normal(scale=scale * x_i)) for x_i in x])
+        return np.asarray([x_i * (1 + np.random.normal(scale=scale)) for x_i in x])
     return generate_samples(model, plant, plant_constrains, u_0, rand_func, size)
 
 
-def generate_samples(model, plant, plant_constrains, u_0, random_func, size, noise = 0.05):
+def generate_samples(model, plant, plant_constrains, u_0, random_func, size, noise = 0.01):
     u_initial = []
     y_initial = []
     i = 0

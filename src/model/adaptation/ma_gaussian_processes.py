@@ -73,10 +73,10 @@ class MAGaussianProcesses:
         data_size = len(self.u_k)
         neighbors_size = min(self.k_neighbors, data_size)
 
-        if(self.neighbors_type == 'k_last'): # use data from the k last operating points
+        if(self.neighbors_type == 'k_last'):  # use data from the k last operating points
             u_train = np.asarray(self.u_k[-neighbors_size:])
             y_train = np.asarray(self.samples_k[-neighbors_size:])
-        elif(self.neighbors_type == 'k_nearest'): # use data from the k nearest operating points
+        elif(self.neighbors_type == 'k_nearest'):  # use data from the k nearest operating points
             # scale the input data to [0,1] interval
             scaler = MinMaxScaler()
             u_norm = scaler.fit_transform(np.asarray(self.u_k))
@@ -85,7 +85,7 @@ class MAGaussianProcesses:
                 n_neighbors=neighbors_size, algorithm='ball_tree').fit(u_norm)
             _, indices = nbrs.kneighbors(
                 scaler.transform(u.reshape(1, -1)))
-            
+
             if(data_size > self.k_neighbors):
                 u_train = np.asarray(self.u_k)[indices.flatten(), :]
                 y_train = np.asarray(self.samples_k)[indices.flatten(), :]
@@ -106,8 +106,7 @@ class MAGaussianProcesses:
             if(np.all(distances > 0.01)):
                 self.u_k.append(u)
                 self.samples_k.append(samples)
-            else:
-                print('Data point ignored. Distances: {}'.format(distances))
+                
         else:
             self.u_k.append(u)
             self.samples_k.append(samples)

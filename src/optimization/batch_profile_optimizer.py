@@ -2,12 +2,14 @@ import numpy as np
 from scipy.optimize import differential_evolution, minimize, approx_fprime, Bounds, NonlinearConstraint
 import ipopt
 
+
 class BatchProfileOptimizer:
-    def __init__(self, ub, lb, g, solver='de_scipy'):
+    def __init__(self, ub, lb, g, solver='de_scipy', backoff=0.00):
         self.lb = lb
         self.ub = ub
         self.g = g
         self.solver = solver
+        self.backoff = backoff  # %
 
     def optimize(self, ub, lb, process_model, ma_model, x0=[]):
         bounds = Bounds(lb, ub)
@@ -25,19 +27,37 @@ class BatchProfileOptimizer:
             modifiers = ma_model.get_modifiers(x)
             return process_model.get_objective(sim_results) + float(modifiers[0])
 
-        nlc = NonlinearConstraint(constraints, -np.inf, self.g)
+        # add the backoff to constraints
+        nlc = NonlinearConstraint(
+            constraints, -np.inf, self.g * (1 - self.backoff))
         if(self.solver == 'de_scipy_best1bin'):
             result = differential_evolution(
                 func, bounds, polish=False, constraints=nlc, atol=0.000001, strategy='best1bin')
-            return result.fun, result.x
+
+            isUnfeasible = np.any(constraints(result.x) > self.g)
+            if(result.success == False & isUnfeasible):
+                return None, []
+            else:
+                return result.fun, result.x
         elif(self.solver == 'de_scipy_rand1bin'):
             result = differential_evolution(
                 func, bounds, polish=False, constraints=nlc, atol=0.000001, strategy='rand1bin')
-            return result.fun, result.x
+
+            isUnfeasible = np.any(constraints(result.x) > self.g)
+            if(result.success == False & isUnfeasible):
+                return None, []
+            else:
+                return result.fun, result.x
         elif(self.solver == 'slsqp_scipy'):
             result = minimize(func, x_start, method='SLSQP',
-                              bounds=bounds, constraints=nlc, tol=0.000001, options={'disp': False})
-            return result.fun, result.x
+                              bounds=bounds, constraints=nlc, options={'disp': False, 'ftol': 0.000001, 'maxiter': 1000})
+
+            # check for feasibility
+            isUnfeasible = np.any(constraints(result.x) > self.g)
+            if(result.success == False & isUnfeasible):
+                return None, [] 
+            else:
+                return result.fun, result.x
         elif(self.solver == 'ipopt'):
             nlp = ipopt.problem(
                 n=len(x_start),
@@ -60,7 +80,8 @@ class BatchProfileOptimizer:
     def run(self, process_model, ma_model, x0=None):
         self.process_model = process_model
         self.ma_model = ma_model
-        best_fobj, sol = self.optimize(self.ub, self.lb, process_model, ma_model, x0)
+        best_fobj, sol = self.optimize(
+            self.ub, self.lb, process_model, ma_model, x0)
         return best_fobj, sol
 
     def eval_objective(self, x):

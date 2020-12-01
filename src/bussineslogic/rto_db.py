@@ -51,12 +51,12 @@ def init_rto_db(database):
                                     id integer PRIMARY KEY,
                                     iteration integer NOT NULL,
                                     status text NOT NULL,
-                                    rto_id integer NOT NULL,
+                                    rto_id integer NOT NULL REFERENCES rto (id) ON DELETE CASCADE,
                                     FOREIGN KEY (rto_id) REFERENCES rto (id)
                                 );"""
 
     sql_create_run_samples = """CREATE TABLE IF NOT EXISTS sample_values (
-                                    run_id integer NOT NULL,
+                                    run_id integer NOT NULL REFERENCES run (id) ON DELETE CASCADE,
                                     timestamp real NOT NULL,
                                     symbol text NOT NULL,                                    
                                     value real NOT NULL,
@@ -71,7 +71,7 @@ def init_rto_db(database):
                                 );"""
 
     sql_create_run_parameters = """CREATE TABLE IF NOT EXISTS parameter_values (
-                                    run_id integer NOT NULL,
+                                    run_id integer NOT NULL REFERENCES run (id) ON DELETE CASCADE,
                                     parameter_name text NOT NULL,
                                     value real,
                                     enabled integer,
@@ -86,7 +86,7 @@ def init_rto_db(database):
 
     sql_create_input_data_values = """CREATE TABLE IF NOT EXISTS input_data_values (
                                     var_name integer,
-                                    run_id integer,
+                                    run_id integer REFERENCES run (id) ON DELETE CASCADE,
                                     value real,
                                     PRIMARY KEY (run_id, var_name),
                                     FOREIGN KEY (run_id) REFERENCES run (id)
@@ -98,7 +98,7 @@ def init_rto_db(database):
                                 );"""
 
     sql_create_result_values = """CREATE TABLE IF NOT EXISTS result_variable_values (
-                                    run_id integer,
+                                    run_id integer REFERENCES run (id) ON DELETE CASCADE,
                                     var_name text,
                                     value real,
                                     PRIMARY KEY (run_id, var_name),
@@ -106,7 +106,7 @@ def init_rto_db(database):
                                 );"""
 
     sql_create_simulation_values = """CREATE TABLE IF NOT EXISTS simulation_values (
-                                    run_id integer,
+                                    run_id integer REFERENCES run (id) ON DELETE CASCADE,
                                     var_name text,
                                     sim_type text,
                                     timestamp real,
@@ -136,4 +136,4 @@ def init_rto_db(database):
 
 
 if __name__ == '__main__':
-    init_rto_db("/mnt/d/rto_data/rto_poc_derand1bin_polish.db")
+    init_rto_db("/mnt/d/rto_data/rto_poc_sqp_experiments.db")
