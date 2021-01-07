@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
@@ -19,7 +20,7 @@ class MAGaussianProcesses:
         self.initial_data = initial_data
 
     def initialize_models(self, data):
-        u_train, y_train = data
+        u_train, y_train, _ = data
         self.u_k = list(u_train)
         self.samples_k = list(y_train)
         self.update_gp_model(u_train, y_train)
@@ -54,6 +55,7 @@ class MAGaussianProcesses:
             outputs[:, col].reshape(-1, 1)) for col in range(cols)]
 
     def train(self, X, y):
+        #kernel = RBF() + ConstantKernel(constant_value_bounds=(1e-5, 1.0))
         gp_model = GaussianProcessRegressor()
         return gp_model.fit(X, y)
 
@@ -106,7 +108,7 @@ class MAGaussianProcesses:
             if(np.all(distances > 0.01)):
                 self.u_k.append(u)
                 self.samples_k.append(samples)
-                
+
         else:
             self.u_k.append(u)
             self.samples_k.append(samples)

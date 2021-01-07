@@ -30,7 +30,7 @@ class RTO:
 
     def save_initial_data(self, initial_data, rto_id):
         for index, u0_i in enumerate(initial_data[0]):
-            _, fr, gr, fm, gm = self.calculate_results(u0_i)
+            fr, gr, fm, gm = initial_data[2][index]
             self.save_results(rto_id, index, fr, gr, fm,
                               gm, u0_i, True, 0, 'initialization')
 

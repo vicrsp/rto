@@ -7,7 +7,7 @@ from model.adaptation.ma_gaussian_processes import MAGaussianProcesses
 from model.process.semi_batch import SemiBatchReactor
 from model.utils import generate_samples_uniform
 
-n_experiments = 20
+n_experiments = 30
 n_iterations = 60
 data_size = 5
 initial_data_noise = 0.01
