@@ -2,6 +2,7 @@ from bussineslogic.rto_data import RTODataModel
 import os
 import sys
 import numpy as np
+import pandas as pd
 from datetime import datetime
 from timeit import default_timer as timer
 
@@ -21,6 +22,7 @@ class RTO:
         self.k_filter = 0.4
         self.noise_level = noise  # %
         self.experiment_name = name
+        self.results = []
 
     def set_iterations(self, iterations):
         self.iterations = iterations
@@ -41,6 +43,7 @@ class RTO:
                         'g_real': ','.join(str(v) for v in gr), 'g_model': ','.join(str(v) for v in gm),
                         'u': ','.join(str(v) for v in f_input),
                         'opt_feasible': str(opt_feasible), 'opt_time': opt_time}
+        self.results.append(results_dict)
         self.md.save_results(run_id, results_dict)
         return run_id
 
@@ -68,8 +71,8 @@ class RTO:
 
         for i in range(self.iterations):
             iteration = i + initial_data_size
-            print('{}: iteration {} started!'.format(
-                self.experiment_name, iteration))
+            # print('{}: iteration {} started!'.format(
+            #     self.experiment_name, iteration))
 
             start = timer()
             _, f_input = self.optimization_problem.run(
@@ -98,5 +101,46 @@ class RTO:
             # Save the results
             self.save_results(rto_id, iteration, fr, gr, fm,
                               gm, f_input, opt_feasible, opt_time)
-            print('{}: cost_model= {}; cost_real= {}'.format(
-                self.experiment_name, fm, fr))
+            print('[{}]-[{}]-[{}]: model= {}; real= {}'.format(
+                datetime.now().strftime("%d/%m/%Y %H:%M:%S"), self.experiment_name, iteration, fm, fr))
+
+
+    def pre_process_results(self, all_results, f_plant):
+        def aggfunc(x):
+            return x
+
+        # Transform the data
+        all_results_pv = pd.pivot_table(all_results, values='value', index=['run.id','iteration','rto.type','run.status'], columns=['var_name'], aggfunc=aggfunc)
+        all_results_pv.reset_index(level=all_results_pv.index.names, inplace=True)
+        
+        # remove the suffix
+        all_results_pv['rto.type'] = all_results_pv['rto.type'].apply(lambda x: x.split('-')[2])
+
+        # Convert the values
+        all_results_pv[['cost_model','cost_real','fobj_modifier', 'opt_time']] = all_results_pv[['cost_model','cost_real','fobj_modifier','opt_time']].astype('float')
+
+        # Extract some variables
+        # all_results_pv['g_0'] = all_results_pv['g_real'].apply(lambda x: float(x.split(',')[0])) 
+        # all_results_pv['g_1'] = all_results_pv['g_real'].apply(lambda x: float(x.split(',')[1])) 
+        # all_results_pv['g_0_model'] = all_results_pv['g_model'].apply(lambda x: float(x.split(',')[0])) 
+        # all_results_pv['g_1_model'] = all_results_pv['g_model'].apply(lambda x: float(x.split(',')[1])) 
+        # all_results_pv['g_0_modifiers'] = all_results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[0])) 
+        # all_results_pv['g_1_modifiers'] = all_results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[1])) 
+
+        # all_results_pv['tm'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[0])) 
+        # all_results_pv['Fs'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[1])) 
+        # all_results_pv['ts'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[2])) 
+
+        # kpis
+        # all_results_pv['du'] = all_results_pv[['tm','Fs','ts']].apply(lambda x: np.linalg.norm(100 * (x - u_plant)/u_plant), axis=1)
+        all_results_pv['dPhi'] = all_results_pv[['cost_real']].apply(lambda x: 100 * np.abs((x - f_plant)/f_plant))
+        # all_results_pv['g_Cb_tf'] = all_results_pv['g_0'].apply(lambda x: 'Not violated' if x <= 0.025 else 'Violated')
+        # all_results_pv['g_Cd_tf'] = all_results_pv['g_1'].apply(lambda x: 'Not violated' if x <= 0.15 else 'Violated')
+
+        return all_results_pv
+
+    def calculate_performance_index(self, f_plant):
+        data = pd.DataFrame(self.md.get_rto_experiment_results(self.experiment_name), 
+                        columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'run.status', 'iteration', 'var_name', 'value'])
+        data_pp = self.pre_process_results(data, f_plant)
+        return np.trapz(data_pp.groupby('iteration')['dPhi'].mean().to_numpy())

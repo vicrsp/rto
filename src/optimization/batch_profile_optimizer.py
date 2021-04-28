@@ -4,11 +4,12 @@ import ipopt
 
 
 class BatchProfileOptimizer:
-    def __init__(self, ub, lb, g, solver='de_scipy', backoff=0.00):
+    def __init__(self, ub, lb, g, solver={'name': 'de_scipy_best1bin'}, backoff=0.00):
         self.lb = lb
         self.ub = ub
         self.g = g
-        self.solver = solver
+        self.solver = solver['name']
+        self.solver_params = solver['params']
         self.backoff = backoff  # %
 
     def optimize(self, ub, lb, process_model, ma_model, x0=[]):
@@ -56,6 +57,15 @@ class BatchProfileOptimizer:
             isUnfeasible = np.any(constraints(result.x) > self.g)
             if(result.success == False & isUnfeasible):
                 return None, [] 
+            else:
+                return result.fun, result.x
+        elif(self.solver == 'de_scipy'):
+            result = differential_evolution(
+                func, bounds, maxiter=100, polish=False, constraints=nlc, **self.solver_params)
+
+            isUnfeasible = np.any(constraints(result.x) > self.g)
+            if(result.success == False & isUnfeasible):
+                return None, []
             else:
                 return result.fun, result.x
         elif(self.solver == 'ipopt'):
