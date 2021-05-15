@@ -9,7 +9,7 @@ class BatchProfileOptimizer:
         self.ub = ub
         self.g = g
         self.solver = solver['name']
-        self.solver_params = solver['params']
+        self.solver_params = solver['params'] if 'params' in solver else None
         self.backoff = backoff  # %
 
     def optimize(self, ub, lb, process_model, ma_model, x0=[]):
@@ -37,18 +37,18 @@ class BatchProfileOptimizer:
 
             isUnfeasible = np.any(constraints(result.x) > self.g)
             if(result.success == False & isUnfeasible):
-                return None, []
+                return None, [], result.nfev
             else:
-                return result.fun, result.x
+                return result.fun, result.x, result.nfev
         elif(self.solver == 'de_scipy_rand1bin'):
             result = differential_evolution(
                 func, bounds, polish=False, constraints=nlc, atol=0.000001, strategy='rand1bin')
 
             isUnfeasible = np.any(constraints(result.x) > self.g)
             if(result.success == False & isUnfeasible):
-                return None, []
+                return None, [], result.nfev
             else:
-                return result.fun, result.x
+                return result.fun, result.x, result.nfev
         elif(self.solver == 'slsqp_scipy'):
             result = minimize(func, x_start, method='SLSQP',
                               bounds=bounds, constraints=nlc, options={'disp': False, 'ftol': 0.000001, 'maxiter': 1000})
@@ -56,18 +56,30 @@ class BatchProfileOptimizer:
             # check for feasibility
             isUnfeasible = np.any(constraints(result.x) > self.g)
             if(result.success == False & isUnfeasible):
-                return None, [] 
+                return None, [], result.nfev 
             else:
-                return result.fun, result.x
+                return result.fun, result.x, result.nfev
         elif(self.solver == 'de_scipy'):
             result = differential_evolution(
-                func, bounds, maxiter=100, polish=False, constraints=nlc, **self.solver_params)
+                func, bounds, maxiter=500, atol=0.0001, polish=False, constraints=nlc, **self.solver_params)
 
             isUnfeasible = np.any(constraints(result.x) > self.g)
             if(result.success == False & isUnfeasible):
-                return None, []
+                return None, [], result.nfev
             else:
-                return result.fun, result.x
+                return result.fun, result.x, result.nfev
+        elif(self.solver == 'de_sqp_hybrid'):
+            result_de = differential_evolution(
+                func, bounds, maxiter=50, atol=0.01, polish=False, constraints=nlc)
+
+            result = minimize(func, result_de.x, method='SLSQP',
+                              bounds=bounds, constraints=nlc, options={'disp': False, 'ftol': 0.000001})
+            t_nfev = result_de.nfev + result.nfev
+            isUnfeasible = np.any(constraints(result.x) > self.g)
+            if(result.success == False & isUnfeasible):
+                return None, [], t_nfev
+            else:
+                return result.fun, result.x, t_nfev
         elif(self.solver == 'ipopt'):
             nlp = ipopt.problem(
                 n=len(x_start),
@@ -90,9 +102,9 @@ class BatchProfileOptimizer:
     def run(self, process_model, ma_model, x0=None):
         self.process_model = process_model
         self.ma_model = ma_model
-        best_fobj, sol = self.optimize(
+        best_fobj, sol, nfev = self.optimize(
             self.ub, self.lb, process_model, ma_model, x0)
-        return best_fobj, sol
+        return best_fobj, sol, nfev
 
     def eval_objective(self, x):
         sim_results = self.process_model.simulate(x)

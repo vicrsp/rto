@@ -34,15 +34,15 @@ class RTO:
         for index, u0_i in enumerate(initial_data[0]):
             fr, gr, fm, gm = initial_data[2][index]
             self.save_results(rto_id, index, fr, gr, fm,
-                              gm, u0_i, True, 0, 'initialization')
+                              gm, u0_i, True, 0, 0, 'initialization')
 
-    def save_results(self, rto_id, index, fr, gr, fm, gm, f_input, opt_feasible, opt_time, run_type='closed-loop'):
+    def save_results(self, rto_id, index, fr, gr, fm, gm, f_input, opt_feasible, opt_time, n_fev, run_type='closed-loop'):
         run_id = self.md.create_run(rto_id, index, run_type)
         results_dict = {'cost_real': fr, 'cost_model': fm,
                         'fobj_modifier': fr - fm, 'g_modifiers': ','.join(str(v) for v in (gr-gm)),
                         'g_real': ','.join(str(v) for v in gr), 'g_model': ','.join(str(v) for v in gm),
                         'u': ','.join(str(v) for v in f_input),
-                        'opt_feasible': str(opt_feasible), 'opt_time': opt_time}
+                        'opt_feasible': str(opt_feasible), 'opt_time': opt_time, 'n_fev': n_fev}
         self.results.append(results_dict)
         self.md.save_results(run_id, results_dict)
         return run_id
@@ -75,7 +75,7 @@ class RTO:
             #     self.experiment_name, iteration))
 
             start = timer()
-            _, f_input = self.optimization_problem.run(
+            _, f_input, n_fev = self.optimization_problem.run(
                 self.process_model, self.adaptation_strategy, f_input)
             end = timer()
             opt_time = end - start
@@ -100,17 +100,17 @@ class RTO:
             self.adaptation_strategy.adapt(f_input, data)
             # Save the results
             self.save_results(rto_id, iteration, fr, gr, fm,
-                              gm, f_input, opt_feasible, opt_time)
-            print('[{}]-[{}]-[{}]: model= {}; real= {}'.format(
-                datetime.now().strftime("%d/%m/%Y %H:%M:%S"), self.experiment_name, iteration, fm, fr))
-
+                              gm, f_input, opt_feasible, opt_time, n_fev)
+            print('[{}]-[{}]: iteration={}'.format(
+                datetime.now().strftime("%d/%m/%Y %H:%M:%S"), self.experiment_name, iteration))
+        return rto_id
 
     def pre_process_results(self, all_results, f_plant):
         def aggfunc(x):
             return x
 
         # Transform the data
-        all_results_pv = pd.pivot_table(all_results, values='value', index=['run.id','iteration','rto.type','run.status'], columns=['var_name'], aggfunc=aggfunc)
+        all_results_pv = pd.pivot_table(all_results, values='value', index=['run.id','iteration','rto.type'], columns=['var_name'], aggfunc=aggfunc)
         all_results_pv.reset_index(level=all_results_pv.index.names, inplace=True)
         
         # remove the suffix
@@ -139,8 +139,9 @@ class RTO:
 
         return all_results_pv
 
-    def calculate_performance_index(self, f_plant):
-        data = pd.DataFrame(self.md.get_rto_experiment_results(self.experiment_name), 
-                        columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'run.status', 'iteration', 'var_name', 'value'])
+    def calculate_performance(self, rto_id, rto_type, f_plant):
+        data = pd.DataFrame(self.md.get_rto_results(rto_id, rto_type), 
+                        columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'iteration', 'var_name', 'value'])
         data_pp = self.pre_process_results(data, f_plant)
-        return np.trapz(data_pp.groupby('iteration')['dPhi'].mean().to_numpy())
+        #return float(data_pp['dPhi'].iloc[-1]) # final gap
+        return np.trapz(data_pp['dPhi']) # AUC
