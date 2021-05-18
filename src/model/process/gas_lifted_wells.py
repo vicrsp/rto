@@ -90,34 +90,6 @@ class GasLiftedWell:
       return fsolve(func=fobj, x0=self.y0)
 
 
-    # def get_samples(self, u, noise=True):
-    #   x_ss = self.solve_steady_state(u)
-    #   samples = self.calculate_flows(x_ss)
-    #   return samples if noise == None else samples * (1 + np.random.normal(scale=noise)) 
-
-    # def get_objective(self, u, noise=None):
-    #     x_ss = self.solve_steady_state(u)
-    #     w_pc,w_pg,w_po,w_iv,w_ro,w_rg=self.calculate_flows(x_ss)
-    #     fx = w_po ** 2 - 0.5*(u[0]**2)
-    #     return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
-
-    # def get_constraints(self, u, noise=None):
-    #     x_ss = self.solve_steady_state(u)
-    #     w_pc,w_pg,w_po,w_iv,w_ro,w_rg=self.calculate_flows(x_ss)
-    #     fx = w_po ** 2 - 0.5*(u[0]**2)
-    #     return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
-
-    # def plot_simulation(self, sim_results):
-    #   for i, result in enumerate(sim_results.y):
-    #     plt.figure(figsize=(8,6))
-    #     plt.plot(sim_results.t, result)
-    #     plt.title(f'Signal {i}')
-
-
-
-config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900 },
-           'well2': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900}} 
-
 class GasLiftwedWellSystem:
   def __init__(self, config, costs=[1.0, 0.3]):
     self.oil_cost, self.gas_cost = costs
@@ -129,7 +101,10 @@ class GasLiftwedWellSystem:
     for i, well in enumerate(self.wells):
       x_ss = well.solve_steady_state(u[i])
       _,w_po,_,_,_= well.calculate_flows(x_ss)
-      fx += self.oil_cost * w_po - self.gas_cost * u[i]
+      # fx += self.oil_cost * w_po - self.gas_cost * u[i]
+      fx += w_po
+    
+    fx = fx ** 2 - 0.5 * np.sum(u ** 2)
 
     return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
 
@@ -146,12 +121,16 @@ class GasLiftwedWellSystem:
     
     return np.array([g])
 
+
+config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900 },
+           'well2': { 'GOR': 0.15, 'PI': 2.2, 'rho_o': 800}} 
+gmax = 8.0
 gs = GasLiftwedWellSystem(config)
 
-fig, ax = plt.subplots(figsize=(8,6))
+fig, ax = plt.subplots(2, 1, figsize=(8,6))
 
-u1 = np.linspace(0.5, 5, 100)
-u2 = np.linspace(0.5, 5, 100)
+u1 = np.linspace(0.5, 5, 50)
+u2 = np.linspace(0.5, 5, 50)
 
 xx, yy = np.meshgrid(u1, u2)
 # flatten each grid to a vector
@@ -161,11 +140,17 @@ r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
 # horizontal stack vectors to create x1,x2 input for the model
 grid = np.hstack((r1,r2))
 # make predictions for the grid
-cost = np.array([gs.get_objective(x) for x in grid])
+cost = np.array([gs.get_objective(x, 0.01) for x in grid])
+g = np.array([gs.get_constraints(x, 0.01)[0] for x in grid])
+# g = np.array([np.any(gs.get_constraints(x) < gmax) for x in grid])
 # reshape the predictions back into a grid
-zz = cost.reshape(xx.shape)
-ax.contour(xx, yy, zz)
+zz_cost = cost.reshape(xx.shape)
+zz_g = g.reshape(xx.shape)
 
+CS = ax[0].contourf(xx, yy, zz_cost)
+cbar = fig.colorbar(CS, ax=ax[0])
+CS = ax[1].contourf(xx, yy, zz_g, cmap='jet')
+cbar = fig.colorbar(CS, ax=ax[1])
 # gl = GasLiftedWell('test', 0)
 # # sim_results = gl.simulate(1)
 # ss = gl.get_objective([1])
