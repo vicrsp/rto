@@ -1,5 +1,4 @@
 import numpy as np
-from gekko import GEKKO
 import math
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
@@ -37,7 +36,7 @@ T_a = 28 + 273 # [ºK]
 T_w = 32 + 273 # [ºK]
 Mw = 20e-3 # [g]
 GOR = 0.1 # [kg/kg]
-mu_oil = 0.001 # 1cP
+mu_oil = 0.000 # 1cP
 
 class GasLiftedWell:
     def __init__(self, name, k=(2.2, 0.1, 900), y0=[1, 1, 1]):
@@ -57,7 +56,7 @@ class GasLiftedWell:
       w_pc = C_pc*math.sqrt(max(0, rho_m*1e2*(p_wh*1e5 - p_m*1e5)))
       w_pg = (m_gt*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
       w_po = (m_ot*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
-      p_wi = 1e-5*((p_wh*1e5 + g/(A_w*L_w)*max(0,(m_ot*1e3+m_gt*1e3-self.rho_o*L_bh*A_bh))*H_w + 128*mu_oil*L_w*w_pc/(3.14*(D_w**4)*((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*T_w*m_gt*1e3))))
+      p_wi = 1e-5*((p_wh*1e5 + g/(A_w*L_w)*max(0,(m_ot*1e3+m_gt*1e3-self.rho_o*L_bh*A_bh))*H_w + 128*mu_oil*L_w*w_pc/(math.pi*(D_w**4)*((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*T_w*m_gt*1e3))))
       p_bh = 1e-5*(p_wi*1e5 + self.rho_o*g*H_bh + 128*mu_oil*L_bh*w_po/(math.pi*(D_bh**4)*self.rho_o))
       w_iv = C_iv*math.sqrt(max(0,rho_ai*1e2*(p_ai*1e5 - p_wi*1e5)))
       w_ro = (self.PI)*1e-6*(p_res*1e5 - p_bh*1e5)
@@ -97,18 +96,27 @@ class GasLiftwedWellSystem:
     self.wells = [GasLiftedWell(k, v.values()) for k,v in config.items()]
 
   def get_objective(self, u, noise=None):
+    return self.get_objective_quadratic(u, noise)
+
+  def get_objective_quadratic(self, u, noise=None):
     fx = 0
     for i, well in enumerate(self.wells):
       x_ss = well.solve_steady_state(u[i])
       _,w_po,_,_,_= well.calculate_flows(x_ss)
-      # fx += self.oil_cost * w_po - self.gas_cost * u[i]
       fx += w_po
     
     fx = fx ** 2 - 0.5 * np.sum(u ** 2)
 
     return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
 
-  
+  def get_objective_linear(self, u, noise=None):
+    fx = 0
+    for i, well in enumerate(self.wells):
+      x_ss = well.solve_steady_state(u[i])
+      _,w_po,_,_,_= well.calculate_flows(x_ss)
+      fx += self.oil_cost * w_po - self.gas_cost * u[i]
+    return -fx if noise == None else -fx * (1 + np.random.normal(scale=noise))
+
   def get_constraints(self, u, noise=None):
     g = 0
     for i, well in enumerate(self.wells):
@@ -121,48 +129,56 @@ class GasLiftwedWellSystem:
     
     return np.array([g])
 
+def run_test():
+  config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900 },
+            'well2': { 'GOR': 0.15, 'PI': 2.2, 'rho_o': 800}} 
+  gmax = 8.0
+  gs = GasLiftwedWellSystem(config)
 
-config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900 },
-           'well2': { 'GOR': 0.15, 'PI': 2.2, 'rho_o': 800}} 
-gmax = 8.0
-gs = GasLiftwedWellSystem(config)
+  fig, ax = plt.subplots(3, 1, figsize=(8,10))
 
-fig, ax = plt.subplots(2, 1, figsize=(8,6))
+  u1 = np.linspace(0.5, 3.0, 50)
+  u2 = np.linspace(0.5, 3.0, 50)
 
-u1 = np.linspace(0.5, 5, 50)
-u2 = np.linspace(0.5, 5, 50)
+  xx, yy = np.meshgrid(u1, u2)
+  # flatten each grid to a vector
+  r1, r2 = xx.flatten(), yy.flatten()
+  r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
 
-xx, yy = np.meshgrid(u1, u2)
-# flatten each grid to a vector
-r1, r2 = xx.flatten(), yy.flatten()
-r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
+  # horizontal stack vectors to create x1,x2 input for the model
+  grid = np.hstack((r1,r2))
+  # make predictions for the grid
+  cost_quad = np.array([gs.get_objective_quadratic(x, 0.01) for x in grid])
+  cost_linear = np.array([gs.get_objective_linear(x, 0.01) for x in grid])
+  g = np.array([gs.get_constraints(x, 0.01)[0] for x in grid])
+  # g = np.array([np.any(gs.get_constraints(x) < gmax) for x in grid])
+  # reshape the predictions back into a grid
+  zz_cost_quad = cost_quad.reshape(xx.shape)
+  zz_cost_linear = cost_linear.reshape(xx.shape)
+  zz_g = g.reshape(xx.shape)
 
-# horizontal stack vectors to create x1,x2 input for the model
-grid = np.hstack((r1,r2))
-# make predictions for the grid
-cost = np.array([gs.get_objective(x, 0.01) for x in grid])
-g = np.array([gs.get_constraints(x, 0.01)[0] for x in grid])
-# g = np.array([np.any(gs.get_constraints(x) < gmax) for x in grid])
-# reshape the predictions back into a grid
-zz_cost = cost.reshape(xx.shape)
-zz_g = g.reshape(xx.shape)
+  CS = ax[0].contourf(xx, yy, zz_cost_quad)
+  cbar = fig.colorbar(CS, ax=ax[0])
+  CS = ax[1].contourf(xx, yy, zz_cost_linear)
+  cbar = fig.colorbar(CS, ax=ax[1])
+  CS = ax[2].contourf(xx, yy, zz_g, cmap='jet')
+  cbar = fig.colorbar(CS, ax=ax[2])
 
-CS = ax[0].contourf(xx, yy, zz_cost)
-cbar = fig.colorbar(CS, ax=ax[0])
-CS = ax[1].contourf(xx, yy, zz_g, cmap='jet')
-cbar = fig.colorbar(CS, ax=ax[1])
-# gl = GasLiftedWell('test', 0)
-# # sim_results = gl.simulate(1)
-# ss = gl.get_objective([1])
-# print(ss)
+  ax[0].set_title('Fobj (Quadratica)')
+  ax[1].set_title('Fobj (Linear)')
+  ax[2].set_title('$Restrição (w_o^T)$')
+  # gl = GasLiftedWell('test', 0)
+  # # sim_results = gl.simulate(1)
+  # ss = gl.get_objective([1])
+  # print(ss)
 
-#gl.plot_simulation(sim_results)
-# fig, ax = plt.subplots(3, 1, figsize=(12,8))
-# for u in np.linspace(0.5, 5, 10):
-#   sim_results = gl.simulate(u)
-#   for i, result in enumerate(sim_results.y):
-#     ax[i].plot(sim_results.t, sim_results.y[i])
-  
-# fig.legend(np.linspace(0.5, 5, 10))
-  
+  #gl.plot_simulation(sim_results)
+  # fig, ax = plt.subplots(3, 1, figsize=(12,8))
+  # for u in np.linspace(0.5, 5, 10):
+  #   sim_results = gl.simulate(u)
+  #   for i, result in enumerate(sim_results.y):
+  #     ax[i].plot(sim_results.t, sim_results.y[i])
+    
+  # fig.legend(np.linspace(0.5, 5, 10))
+    
   

@@ -48,14 +48,12 @@ class RTO:
         return run_id
 
     def calculate_results(self, f_input):
-        sim_real = self.real_process.simulate(f_input)
-        sim_model = self.process_model.simulate(f_input)
         # with 1% gaussian noise
         fr, gr = self.real_process.get_objective(
-            sim_real, self.noise_level), self.real_process.get_constraints(f_input, sim_real, self.noise_level)
+            f_input, self.noise_level), self.real_process.get_constraints(f_input, self.noise_level)
 
         fm, gm = self.process_model.get_objective(
-            sim_model), self.process_model.get_constraints(f_input, sim_model)
+            f_input), self.process_model.get_constraints(f_input)
         data = np.append(np.asarray(fr - fm), gr - gm)
 
         return data, fr, gr, fm, gm
@@ -110,38 +108,43 @@ class RTO:
             return x
 
         # Transform the data
-        all_results_pv = pd.pivot_table(all_results, values='value', index=['run.id','iteration','rto.type'], columns=['var_name'], aggfunc=aggfunc)
-        all_results_pv.reset_index(level=all_results_pv.index.names, inplace=True)
-        
+        all_results_pv = pd.pivot_table(all_results, values='value', index=[
+                                        'run.id', 'iteration', 'rto.type'], columns=['var_name'], aggfunc=aggfunc)
+        all_results_pv.reset_index(
+            level=all_results_pv.index.names, inplace=True)
+
         # remove the suffix
-        all_results_pv['rto.type'] = all_results_pv['rto.type'].apply(lambda x: x.split('-')[2])
+        all_results_pv['rto.type'] = all_results_pv['rto.type'].apply(
+            lambda x: x.split('-')[2])
 
         # Convert the values
-        all_results_pv[['cost_model','cost_real','fobj_modifier', 'opt_time']] = all_results_pv[['cost_model','cost_real','fobj_modifier','opt_time']].astype('float')
+        all_results_pv[['cost_model', 'cost_real', 'fobj_modifier', 'opt_time']] = all_results_pv[[
+            'cost_model', 'cost_real', 'fobj_modifier', 'opt_time']].astype('float')
 
         # Extract some variables
-        # all_results_pv['g_0'] = all_results_pv['g_real'].apply(lambda x: float(x.split(',')[0])) 
-        # all_results_pv['g_1'] = all_results_pv['g_real'].apply(lambda x: float(x.split(',')[1])) 
-        # all_results_pv['g_0_model'] = all_results_pv['g_model'].apply(lambda x: float(x.split(',')[0])) 
-        # all_results_pv['g_1_model'] = all_results_pv['g_model'].apply(lambda x: float(x.split(',')[1])) 
-        # all_results_pv['g_0_modifiers'] = all_results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[0])) 
-        # all_results_pv['g_1_modifiers'] = all_results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[1])) 
+        # all_results_pv['g_0'] = all_results_pv['g_real'].apply(lambda x: float(x.split(',')[0]))
+        # all_results_pv['g_1'] = all_results_pv['g_real'].apply(lambda x: float(x.split(',')[1]))
+        # all_results_pv['g_0_model'] = all_results_pv['g_model'].apply(lambda x: float(x.split(',')[0]))
+        # all_results_pv['g_1_model'] = all_results_pv['g_model'].apply(lambda x: float(x.split(',')[1]))
+        # all_results_pv['g_0_modifiers'] = all_results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[0]))
+        # all_results_pv['g_1_modifiers'] = all_results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[1]))
 
-        # all_results_pv['tm'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[0])) 
-        # all_results_pv['Fs'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[1])) 
-        # all_results_pv['ts'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[2])) 
+        # all_results_pv['tm'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[0]))
+        # all_results_pv['Fs'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[1]))
+        # all_results_pv['ts'] = all_results_pv['u'].apply(lambda x: float(x.split(',')[2]))
 
         # kpis
         # all_results_pv['du'] = all_results_pv[['tm','Fs','ts']].apply(lambda x: np.linalg.norm(100 * (x - u_plant)/u_plant), axis=1)
-        all_results_pv['dPhi'] = all_results_pv[['cost_real']].apply(lambda x: 100 * np.abs((x - f_plant)/f_plant))
+        all_results_pv['dPhi'] = all_results_pv[['cost_real']].apply(
+            lambda x: 100 * np.abs((x - f_plant)/f_plant))
         # all_results_pv['g_Cb_tf'] = all_results_pv['g_0'].apply(lambda x: 'Not violated' if x <= 0.025 else 'Violated')
         # all_results_pv['g_Cd_tf'] = all_results_pv['g_1'].apply(lambda x: 'Not violated' if x <= 0.15 else 'Violated')
 
         return all_results_pv
 
     def calculate_performance(self, rto_id, rto_type, f_plant):
-        data = pd.DataFrame(self.md.get_rto_results(rto_id, rto_type), 
-                        columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'iteration', 'var_name', 'value'])
+        data = pd.DataFrame(self.md.get_rto_results(rto_id, rto_type),
+                            columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'iteration', 'var_name', 'value'])
         data_pp = self.pre_process_results(data, f_plant)
-        #return float(data_pp['dPhi'].iloc[-1]) # final gap
-        return np.trapz(data_pp['dPhi']) # AUC
+        # return float(data_pp['dPhi'].iloc[-1]) # final gap
+        return np.trapz(data_pp['dPhi'])  # AUC

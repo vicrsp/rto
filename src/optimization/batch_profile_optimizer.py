@@ -17,16 +17,14 @@ class BatchProfileOptimizer:
         x_start = (np.asarray(ub) - np.asarray(lb)) / 2 if len(x0) == 0 else x0
 
         def constraints(x):
-            sim_results = process_model.simulate(x)
             modifiers = ma_model.get_modifiers(x)
             gm = modifiers[1:].reshape(-1,)
-            g = process_model.get_constraints(x, sim_results).reshape(-1,) + gm
+            g = process_model.get_constraints(x).reshape(-1,) + gm
             return g
 
         def func(x):
-            sim_results = process_model.simulate(x)
             modifiers = ma_model.get_modifiers(x)
-            return process_model.get_objective(sim_results) + float(modifiers[0])
+            return process_model.get_objective(x) + float(modifiers[0])
 
         # add the backoff to constraints
         nlc = NonlinearConstraint(

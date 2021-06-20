@@ -22,14 +22,11 @@ def generate_samples(model, plant, plant_constrains, u_0, random_func, size, noi
     i = 0
     while(i < size):
         u_rand = random_func(u_0)
-        sim_ideal = plant.simulate(u_rand)
-        sim_model = model.simulate(u_rand)
-
         fr, gr = plant.get_objective(
-            sim_ideal, noise=noise), plant.get_constraints(u_rand, sim_ideal, noise=noise)
+            u_rand, noise=noise), plant.get_constraints(u_rand, noise=noise)
 
         fm, gm = model.get_objective(
-            sim_model), model.get_constraints(u_rand, sim_model)
+            u_rand), model.get_constraints(u_rand)
 
         # append only if constraints are not violated
         if(np.any(gr - plant_constrains > 0) == False):
