@@ -141,7 +141,7 @@ class GasLiftwedWellSystem:
 
     self.numpoints = 500
 
-  def casadi_ode(self):
+  def build_casadi_sys(self):
     # differential states
     m_ga = cd.MX.sym('m_ga',self.n_w) # 1-2
     m_gt = cd.MX.sym('m_gt',self.n_w) # 3-4
@@ -182,11 +182,16 @@ class GasLiftwedWellSystem:
     y_model= cd.Function('alg',[x_var,u_var],[y_var])
 
     # cost function
-    L = -self.oil_cost*cd.sum1(w_po) + self.gas_cost*cd.sum1(w_gl)
+    L_linear = -self.oil_cost*cd.sum1(w_po) + self.gas_cost*cd.sum1(w_gl)
+    L_quad = cd.power(cd.sum1(w_po), 2) - cd.sum1(cd.power(w_gl, 2))
+    constraint = cd.sum1(w_pg)
 
-    ode = {'x': x_var,'p':u_var,'ode': diff, 'quad': L}
+    ode = {'x': x_var,'p':u_var,'ode': diff, 'quad': L_linear}
     
-    f = cd.Function('f',[x_var,u_var],[diff,L],['x','p'],['xdot','qj'])
+    f_linear = cd.Function('f_linear',[x_var,u_var],[L_linear])
+    f_quad = cd.Function('f_quad',[x_var,u_var],[L_quad])
+    f_g = cd.Function('g',[x_var,u_var],[constraint])
+
     sys_dict = {}
     sys_dict['x']= x_var
     sys_dict['z'] = []
@@ -194,9 +199,7 @@ class GasLiftwedWellSystem:
     sys_dict['d'] = []
     sys_dict['diff'] = diff
     sys_dict['alg'] = algebraic_eq
-    sys_dict['L'] = L
     sys_dict['y'] = y_var
-    sys_dict['f'] = f
     sys_dict['y_model'] = y_model
 
     sys_dict['nlcon'] = []
@@ -204,10 +207,14 @@ class GasLiftwedWellSystem:
     sys_dict['ub'] = []
     sys_dict['ode'] = ode
 
+    sys_dict['f_linear'] = f_linear
+    sys_dict['f_quad'] = f_quad
+    sys_dict['f_g'] = f_g
+
     return sys_dict
 
   def simulate_casadi(self, x0, u, tf=1.0):
-    sys = self.casadi_ode()
+    sys = self.build_casadi_sys()
     ode = sys['ode']
     # create IDAS integrator
     opts = {'tf': tf}
@@ -253,7 +260,7 @@ class GasLiftwedWellSystem:
 
   def solve_steady_state_casadi(self, u):
     
-    sys = self.casadi_ode()
+    sys = self.build_casadi_sys()
 
     dx0 = np.array([1.32*np.ones((self.n_w,)), 0.8*np.ones((self.n_w,)), 6*np.ones((self.n_w,))]).flatten()
     lbx = np.array([0.01*np.ones((self.n_w,)), 0.01*np.ones((self.n_w,)), 0.01*np.ones((self.n_w,))]).flatten()
@@ -280,30 +287,25 @@ class GasLiftwedWellSystem:
     return self.get_objective_quadratic(u, noise)
 
   def get_objective_quadratic(self, u, noise=None):
-    fx = 0
-    for i, well in enumerate(self.wells):
-      x_ss = well.solve_steady_state(u[i])
-      _,w_po,_,_,_= well.calculate_flows(x_ss)
-      fx += w_po
-    
-    fx = fx ** 2 - 0.5 * np.sum(u ** 2)
+    sys = self.build_casadi_sys()
+    xss, _ = self.solve_steady_state_casadi(u)
+
+    fx = float(sys['f_quad'](xss[:-2], u))
 
     return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
 
   def get_objective_linear(self, u, noise=None):
-    fx = 0
-    for i, well in enumerate(self.wells):
-      x_ss = well.solve_steady_state(u[i])
-      _,w_po,_,_,_= well.calculate_flows(x_ss)
-      fx += self.oil_cost * w_po - self.gas_cost * u[i]
+    sys = self.build_casadi_sys()
+    xss, _ = self.solve_steady_state_casadi(u)
+
+    fx = float(sys['f_linear'](xss[:-2], u))
     return -fx if noise == None else -fx * (1 + np.random.normal(scale=noise))
 
   def get_constraints(self, u, noise=None):
-    g = 0
-    for i, well in enumerate(self.wells):
-      x_ss = well.solve_steady_state(u[i])
-      w_pg,_,_,_,_= well.calculate_flows(x_ss)
-      g += w_pg
+    sys = self.build_casadi_sys()
+    xss, _ = self.solve_steady_state_casadi(u)
+
+    g = float(sys['f_g'](xss[:-2], u))
     
     if(noise != None):
       g = g * (1 + np.random.normal(scale=noise))
@@ -324,10 +326,27 @@ class GasLiftwedWellSystem:
     #return {well.name: well.solve_steady_state(u[i]) for i, well in enumerate(self.wells)}
 
 
-config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 },
-          'well2': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 }} 
-gs = GasLiftwedWellSystem(config)
-# gs.casadi_ode()
-sim_res = gs.simulate_casadi(x0=[1,1,1,1,1,1],u=[1,1],tf=1)
-sol = gs.get_steady_state_casadi(u=np.ones((gs.n_w,)))
-# well_sim = gs.get_objective_quadratic(np.array([1]))
+# config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 },
+#           'well2': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 }} 
+# gs = GasLiftwedWellSystem(config)
+# # gs.casadi_ode()
+# sim_res = gs.simulate_casadi(x0=[1,1,1,1,1,1],u=[1,1],tf=1)
+# sol = gs.get_steady_state_casadi(u=np.ones((gs.n_w,)))
+# fquad = gs.get_objective_quadratic(u=[1,1])
+# fl = gs.get_objective_linear(u=[1,1])
+# fg = gs.get_constraints(u=[1,1])
+
+
+# u1 = np.linspace(0.5, 5.0, 10)
+# u2 = np.linspace(0.5, 5.0, 10)
+
+# xx, yy = np.meshgrid(u1, u2)
+# # flatten each grid to a vector
+# r1, r2 = xx.flatten(), yy.flatten()
+# r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
+# # horizontal stack vectors to create x1,x2 input for the model
+# grid = np.hstack((r1,r2))
+# # make predictions for the grid
+# cost_quad = np.array([gs.get_objective_quadratic(x,0.1) for x in grid])
+# cost_linear = np.array([gs.get_objective_linear(x,0.1) for x in grid])
+# g = np.array([gs.get_constraints(x,0.1)[0] for x in grid])
