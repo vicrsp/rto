@@ -2,7 +2,8 @@ import numpy as np
 import math
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
-import matplotlib.pyplot as plt
+import casadi as cd
+from bunch import Bunch
 
 
 # CONSTANTS
@@ -30,36 +31,50 @@ rho_o = 900 # [kg/m3]
 C_iv = 1e-4 # [m2]
 C_pc = 1e-3 # [m2]
 p_m = 20 # [bar]
-p_res = 150 # [bar]
-PI = 2.2 # [kg/s/bar]
+PI = 2.2 # [kg/(s*bar)]
 T_a = 28 + 273 # [ºK]
 T_w = 32 + 273 # [ºK]
-Mw = 20e-3 # [g]
+Mw = 20e-3 # [kg]
 GOR = 0.1 # [kg/kg]
-mu_oil = 0.000 # 1cP
+mu_oil = 1*0.001 # 1cP
+
 
 class GasLiftedWell:
-    def __init__(self, name, k=(2.2, 0.1, 900), y0=[1, 1, 1]):
+    def __init__(self, name, k=(2.2, 0.1, 900, 150), y0=[1, 1, 1]):
       self.name = name
       self.y0 = y0
-      self.PI, self.GOR, self.rho_o = k
-      self.stoptime = 300
+      self.PI, self.GOR, self.rho_o, self.p_res = k
+      self.stoptime = 1000
       self.numpoints = 100
-      
+
     def calculate_flows(self, x):
       m_ga, m_gt, m_ot = x # current state
       
+      # p_ai = 1e-5*(((R*T_a/(V_a*Mw) + g*H_a/(L_a*A_a))*m_ga*1e3))
+      # p_wh = 1e-5*(((R*T_w/Mw)*(m_gt*1e3/(L_w*A_w + L_r*A_r - m_ot*1e3/self.rho_o))))
+      # rho_ai = 1e-2*((Mw/(R*T_a))*p_ai*1e5)
+      # # rho_w = 1e-2*(max(0, (m_gt*1e3 + m_ot*1e3 - self.rho_o*L_r*A_r)/(L_w*A_w)))
+      # rho_w = 1e-2*(((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*T_w*m_gt*1e3)) 
+      # w_pc = C_pc*math.sqrt(max(0, rho_w*1e2*(p_wh*1e5 - p_m*1e5)))
+      # w_pg = (m_gt*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
+      # w_po = (m_ot*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
+      # p_wi = 1e-5*((p_wh*1e5 + (g/(A_w*L_w))*max(0,(m_ot*1e3+m_gt*1e3-self.rho_o*L_r*A_r))*H_w))
+      # p_bh = 1e-5*(p_wi*1e5 + rho_w*1e2*g*H_r)
+      # w_iv = C_iv*math.sqrt(max(0,rho_ai*1e2*(p_ai*1e5 - p_wi*1e5)))
+      # w_ro = (self.PI)*1e-6*(self.p_res*1e5 - p_bh*1e5)
+      # w_rg = 1e1*self.GOR*w_ro
+
       p_ai = 1e-5*(((R*T_a/(V_a*Mw) + g*H_a/V_a)*m_ga*1e3) + (Mw/(R*T_a)*((R*T_a/(V_a*Mw) + g*H_a/V_a)*m_ga*1e3))*g*H_a)
       p_wh = 1e-5*(((R*T_w/Mw)*(m_gt*1e3/(L_w*A_w + L_bh*A_bh - m_ot*1e3/self.rho_o))) - ((m_gt*1e3+m_ot*1e3 )/(L_w*A_w))*g*H_w/2)
       rho_ai = 1e-2*(Mw/(R*T_a)*p_ai*1e5)
-      rho_m = 1e-2*(((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + rho_o*R*T_w*m_gt*1e3)) 
+      rho_m = 1e-2*(((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*T_w*m_gt*1e3)) 
       w_pc = C_pc*math.sqrt(max(0, rho_m*1e2*(p_wh*1e5 - p_m*1e5)))
       w_pg = (m_gt*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
       w_po = (m_ot*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
       p_wi = 1e-5*((p_wh*1e5 + g/(A_w*L_w)*max(0,(m_ot*1e3+m_gt*1e3-self.rho_o*L_bh*A_bh))*H_w + 128*mu_oil*L_w*w_pc/(math.pi*(D_w**4)*((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*T_w*m_gt*1e3))))
       p_bh = 1e-5*(p_wi*1e5 + self.rho_o*g*H_bh + 128*mu_oil*L_bh*w_po/(math.pi*(D_bh**4)*self.rho_o))
       w_iv = C_iv*math.sqrt(max(0,rho_ai*1e2*(p_ai*1e5 - p_wi*1e5)))
-      w_ro = (self.PI)*1e-6*(p_res*1e5 - p_bh*1e5)
+      w_ro = (self.PI)*1e-6*(self.p_res*1e5 - p_bh*1e5)
       w_rg = 1e1*self.GOR*w_ro
 
       return w_pg,w_po,w_iv,w_ro,w_rg
@@ -95,6 +110,172 @@ class GasLiftwedWellSystem:
     self.n_w = len(config.keys())
     self.wells = [GasLiftedWell(k, v.values()) for k,v in config.items()]
 
+    self.L_w = np.array([1500] * self.n_w) # [m]
+    self.H_w = np.array([1000] * self.n_w) # [m]
+    self.D_w = np.array([0.121] * self.n_w) # [m]
+
+    self.L_bh = np.array([500] * self.n_w) # [m]
+    self.H_bh = np.array([100] * self.n_w) # [m]
+    self.D_bh = np.array([0.121] * self.n_w) # [m]
+
+    self.L_a = np.array([1500] * self.n_w) # [m]
+    self.H_a = np.array([1000] * self.n_w) # [m]
+    self.D_a = np.array([0.189] * self.n_w) # [m]
+    self.A_a = math.pi * (self.D_a / 2)**2 # [m2]
+
+    self.A_w = math.pi*((self.D_w/2)**2)
+    self.A_bh = math.pi*((self.D_bh/2)**2)
+    self.V_a = self.L_a * (math.pi*(self.D_a / 2)**2 - math.pi*(self.D_w / 2)**2)
+
+    self.rho_o = np.array([900] * self.n_w) # [kg/m3]
+    self.C_iv = np.array([1e-4] * self.n_w) # [m2]
+    self.C_pc = np.array([1e-3] * self.n_w) # [m2]
+    self.p_m = np.array([20] * self.n_w) # [bar]
+    self.PI = np.array([2.2] * self.n_w) # [kg/(s*bar)]
+    self.T_a = np.array([28 + 273] * self.n_w) # [ºK]
+    self.T_w = np.array([32 + 273] * self.n_w) # [ºK]
+    self.Mw = np.array([20e-3] * self.n_w) # [kg]
+    self.GOR = np.array([0.1] * self.n_w) # [kg/kg]
+    self.mu_oil = np.array([1*0.001] * self.n_w) # 1cP
+    self.p_res = np.array([150] * self.n_w)
+
+    self.numpoints = 500
+
+  def casadi_ode(self):
+    # differential states
+    m_ga = cd.MX.sym('m_ga',self.n_w) # 1-2
+    m_gt = cd.MX.sym('m_gt',self.n_w) # 3-4
+    m_ot = cd.MX.sym('m_ot',self.n_w) # 5-6
+
+    # control input
+    w_gl = cd.MX.sym('w_gl', self.n_w)
+
+    # algebraic equations used for substitution in the ODE model
+    p_ai = 1e-5*(((R*self.T_a/(self.V_a*Mw) + g*self.H_a/self.V_a)*m_ga*1e3) + (Mw/(R*self.T_a)*((R*self.T_a/(self.V_a*Mw) + g*self.H_a/self.V_a)*m_ga*1e3))*g*self.H_a)
+    p_wh = 1e-5*(((R*self.T_w/Mw)*(m_gt*1e3/(self.L_w*self.A_w + self.L_bh*self.A_bh - m_ot*1e3/self.rho_o))) - ((m_gt*1e3+m_ot*1e3 )/(self.L_w*self.A_w))*g*self.H_w/2)
+    rho_ai = 1e-2*(Mw/(R*self.T_a)*p_ai*1e5)
+    rho_m = 1e-2*(((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*self.T_w*m_gt*1e3)) 
+    w_pc = self.C_pc*cd.sqrt(cd.fmax(0, rho_m*1e2*(p_wh*1e5 - self.p_m*1e5)))
+    w_pg = (m_gt*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
+    w_po = (m_ot*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
+    p_wi = 1e-5*((p_wh*1e5 + g/(self.A_w*self.L_w)*cd.fmax(0, m_ot*1e3+m_gt*1e3-self.rho_o*self.L_bh*self.A_bh)*self.H_w + 128*self.mu_oil*self.L_w*w_pc/(3.14*self.D_w**4*((m_gt*1e3 + m_ot*1e3)*p_wh*1e5*Mw*self.rho_o)/(m_ot*1e3*p_wh*1e5*Mw + self.rho_o*R*self.T_w*m_gt*1e3))))
+    p_bh = 1e-5*(p_wi*1e5 + self.rho_o*g*self.H_bh + 128*self.mu_oil*self.L_bh*w_po/(3.14*self.D_bh**4*self.rho_o))
+    w_iv = self.C_iv*cd.sqrt(rho_ai*1e2*(p_ai*1e5 - p_wi*1e5))
+    w_ro = (self.PI)*1e-6*(self.p_res*1e5 - p_bh*1e5)
+    w_rg = 1e1*self.GOR*w_ro
+
+    # differential equations
+    df1C = (w_gl - w_iv)*1e-3
+    df2C = (w_iv + w_rg*1e-1 - w_pg)*1e-3
+    df3C = (w_ro - w_po)*1e-3
+
+    # Concatenate the differential and algebraic equations
+    diff = cd.vertcat(df1C,df2C,df3C)
+
+    # concatenate the differential and algebraic states
+    x_var = cd.vertcat(m_ga,m_gt,m_ot)
+    u_var = cd.vertcat(w_gl)
+
+    z_var = cd.vertcat(p_ai,p_wh,p_wi,p_bh,rho_ai,rho_m,w_iv,w_pc,w_pg,w_po,w_ro,w_rg)
+    algebraic_eq = cd.Function('alg',[x_var,u_var],[z_var])
+    y_var = cd.vertcat(w_pg,w_po,w_iv,w_ro,w_rg)
+    y_model= cd.Function('alg',[x_var,u_var],[y_var])
+
+    # cost function
+    L = -self.oil_cost*cd.sum1(w_po) + self.gas_cost*cd.sum1(w_gl)
+
+    ode = {'x': x_var,'p':u_var,'ode': diff, 'quad': L}
+    
+    f = cd.Function('f',[x_var,u_var],[diff,L],['x','p'],['xdot','qj'])
+    sys_dict = {}
+    sys_dict['x']= x_var
+    sys_dict['z'] = []
+    sys_dict['u'] = u_var
+    sys_dict['d'] = []
+    sys_dict['diff'] = diff
+    sys_dict['alg'] = algebraic_eq
+    sys_dict['L'] = L
+    sys_dict['y'] = y_var
+    sys_dict['f'] = f
+    sys_dict['y_model'] = y_model
+
+    sys_dict['nlcon'] = []
+    sys_dict['lb'] =  []
+    sys_dict['ub'] = []
+    sys_dict['ode'] = ode
+
+    return sys_dict
+
+  def simulate_casadi(self, x0, u, tf=1.0):
+    sys = self.casadi_ode()
+    ode = sys['ode']
+    # create IDAS integrator
+    opts = {'tf': tf}
+    F = cd.integrator('F','cvodes', ode, opts)
+    # Integrate step by step
+    x = x0
+    results = []
+    results_well = {}
+    for _ in range(self.numpoints):
+      res = F(x0=x,p=u)
+      x = res["xf"]
+      y = sys['y_model'](x,u)
+      sim = np.concatenate((x, y))
+      results.append(sim.reshape(-1,))
+
+    results = np.array(results)
+    for i, well in enumerate(self.wells):
+      results_well[well.name] = Bunch(y=results[:, i::self.n_w].T, t= np.arange(results.shape[0]))
+
+    return results_well
+  
+  def simulate(self, u):
+    results = {}
+    for i, well in enumerate(self.wells):
+      sim = well.simulate(u[i])
+      m = sim.y.shape[1]
+      flows = [well.calculate_flows(sim.y[:,k]) for k in range(m)]
+      sim.y = np.concatenate((sim.y, np.array(flows).T))
+      results[well.name] = sim
+
+    return results
+
+
+  def get_steady_state_casadi(self, u):
+    results = {}
+    xss, y = self.solve_steady_state_casadi(u)
+    xss = np.concatenate((xss, y))
+
+    for i, well in enumerate(self.wells):
+      results[well.name] = xss[i::self.n_w]
+
+    return results
+
+  def solve_steady_state_casadi(self, u):
+    
+    sys = self.casadi_ode()
+
+    dx0 = np.array([1.32*np.ones((self.n_w,)), 0.8*np.ones((self.n_w,)), 6*np.ones((self.n_w,))]).flatten()
+    lbx = np.array([0.01*np.ones((self.n_w,)), 0.01*np.ones((self.n_w,)), 0.01*np.ones((self.n_w,))]).flatten()
+    ubx = np.array([1e7*np.ones((self.n_w,)), 1e7*np.ones((self.n_w,)), 1e7*np.ones((self.n_w,))]).flatten()
+   
+    lbw = np.concatenate((lbx,u))
+    ubw = np.concatenate((ubx,u))
+    w0 = np.concatenate((dx0,u))
+
+    g = cd.vertcat(sys['diff'])
+    lbg = np.zeros((sys['diff'].shape[0],))
+    ubg = np.zeros((sys['diff'].shape[0],))
+
+
+    nlp = {'x': cd.vertcat(sys['x'], sys['u']),'p': sys['d'],'f': 0,'g': g}
+    opts = {'warn_initial_bounds': False, 'print_time': False,'ipopt': {'print_level':0}}
+    solver = cd.nlpsol('solver','ipopt', nlp, opts)
+    sol = solver(x0=w0, lbx=lbw, ubx=ubw,lbg=lbg,ubg=ubg)
+
+    y = sys['y_model'](sol['x'][:-self.n_w],u)
+    return np.array(sol['x']), y
+
   def get_objective(self, u, noise=None):
     return self.get_objective_quadratic(u, noise)
 
@@ -129,56 +310,24 @@ class GasLiftwedWellSystem:
     
     return np.array([g])
 
-def run_test():
-  config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900 },
-            'well2': { 'GOR': 0.15, 'PI': 2.2, 'rho_o': 800}} 
-  gmax = 8.0
-  gs = GasLiftwedWellSystem(config)
-
-  fig, ax = plt.subplots(3, 1, figsize=(8,10))
-
-  u1 = np.linspace(0.5, 3.0, 50)
-  u2 = np.linspace(0.5, 3.0, 50)
-
-  xx, yy = np.meshgrid(u1, u2)
-  # flatten each grid to a vector
-  r1, r2 = xx.flatten(), yy.flatten()
-  r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
-
-  # horizontal stack vectors to create x1,x2 input for the model
-  grid = np.hstack((r1,r2))
-  # make predictions for the grid
-  cost_quad = np.array([gs.get_objective_quadratic(x, 0.01) for x in grid])
-  cost_linear = np.array([gs.get_objective_linear(x, 0.01) for x in grid])
-  g = np.array([gs.get_constraints(x, 0.01)[0] for x in grid])
-  # g = np.array([np.any(gs.get_constraints(x) < gmax) for x in grid])
-  # reshape the predictions back into a grid
-  zz_cost_quad = cost_quad.reshape(xx.shape)
-  zz_cost_linear = cost_linear.reshape(xx.shape)
-  zz_g = g.reshape(xx.shape)
-
-  CS = ax[0].contourf(xx, yy, zz_cost_quad)
-  cbar = fig.colorbar(CS, ax=ax[0])
-  CS = ax[1].contourf(xx, yy, zz_cost_linear)
-  cbar = fig.colorbar(CS, ax=ax[1])
-  CS = ax[2].contourf(xx, yy, zz_g, cmap='jet')
-  cbar = fig.colorbar(CS, ax=ax[2])
-
-  ax[0].set_title('Fobj (Quadratica)')
-  ax[1].set_title('Fobj (Linear)')
-  ax[2].set_title('$Restrição (w_o^T)$')
-  # gl = GasLiftedWell('test', 0)
-  # # sim_results = gl.simulate(1)
-  # ss = gl.get_objective([1])
-  # print(ss)
-
-  #gl.plot_simulation(sim_results)
-  # fig, ax = plt.subplots(3, 1, figsize=(12,8))
-  # for u in np.linspace(0.5, 5, 10):
-  #   sim_results = gl.simulate(u)
-  #   for i, result in enumerate(sim_results.y):
-  #     ax[i].plot(sim_results.t, sim_results.y[i])
     
-  # fig.legend(np.linspace(0.5, 5, 10))
-    
-  
+  def get_steady_state(self, u):
+    results = {}
+    for i, well in enumerate(self.wells):
+      xss = well.solve_steady_state(u[i])
+      w_pg,w_po,w_iv,w_ro,w_rg = well.calculate_flows(xss)
+      #print(xss.shape)
+      xss = np.concatenate((xss, [w_pg,w_po,w_iv,w_ro,w_rg]))
+      results[well.name] = xss
+
+    return results
+    #return {well.name: well.solve_steady_state(u[i]) for i, well in enumerate(self.wells)}
+
+
+config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 },
+          'well2': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 }} 
+gs = GasLiftwedWellSystem(config)
+# gs.casadi_ode()
+sim_res = gs.simulate_casadi(x0=[1,1,1,1,1,1],u=[1,1],tf=1)
+sol = gs.get_steady_state_casadi(u=np.ones((gs.n_w,)))
+# well_sim = gs.get_objective_quadratic(np.array([1]))

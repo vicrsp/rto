@@ -1,11 +1,9 @@
-import numpy as np
 import multiprocessing
-from model.process.gas_lifted_wells import GasLiftwedWellSystem
 
 from optimization.rto import RTO
 from optimization.batch_profile_optimizer import BatchProfileOptimizer
 from model.adaptation.ma_gaussian_processes import MAGaussianProcesses
-from model.process.semi_batch import SemiBatchReactor
+from model.process.gas_lifted_wells import GasLiftwedWellSystem
 from model.utils import generate_samples_uniform
 
 n_experiments = 30
@@ -18,7 +16,7 @@ def build_config(n_wells, gor, PI, rho_o):
     return { f'well{i}':  { 'GOR': gor[i], 'PI': PI[i], 'rho_o': rho_o[i] } for i in range(n_wells)}
 
 config_model = build_config(n_wells, [0.1,0.15], [2.2,2.2], [900,800])
-config_plant = build_config(n_wells, [0.1,0.15], [3.2,5.2], [800,900])
+config_plant = build_config(n_wells, [0.1,0.15], [2.8,2.6], [900,800])
 
 model = GasLiftwedWellSystem(config_model)
 plant = GasLiftwedWellSystem(config_plant)
