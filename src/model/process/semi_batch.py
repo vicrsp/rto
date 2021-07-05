@@ -95,18 +95,20 @@ class SemiBatchReactor:
         xnew = [0.002, x[0], x[1], x[2], 0]
         return solve_ivp(fun=self.odecallback, t_span=[0, self.stoptime], t_eval=t, y0=self.y0, args=(xnew,))
 
-    def get_objective(self, sim_results, noise=None):
+    def get_objective(self, x, noise=None):
+        sim_results = self.simulate(x)
         Cc_tf = sim_results.y[2][-1]
         V_tf = sim_results.y[4][-1]
         fx = Cc_tf * V_tf
-        return -fx if noise == None else -fx + np.random.normal(scale=noise * fx)
+        return -fx if noise == None else -fx * (1 + np.random.normal(scale=noise))
 
     def get_constraints(self, x, sim_results, noise=None):
+        sim_results = self.simulate(x)
         Cb_tf = sim_results.y[1][-1]
         Cd_tf = sim_results.y[3][-1]
 
         if(noise != None):
-            Cb_tf = Cb_tf + np.random.normal(scale=noise * Cb_tf)
-            Cd_tf = Cd_tf + np.random.normal(scale=noise * Cd_tf)
+            Cb_tf = Cb_tf * (1 + np.random.normal(scale=noise))
+            Cd_tf = Cd_tf * (1 + np.random.normal(scale=noise))
 
         return np.asarray([Cb_tf, Cd_tf])

@@ -1,6 +1,6 @@
 from .rto_db import create_connection
 import datetime
-
+from sqlite3 import IntegrityError
 
 class RTODataModel:
     def __init__(self, file=r"D:\rto\src\data\rto.db"):
@@ -8,27 +8,37 @@ class RTODataModel:
 
     def create_rto(self, name='rto', rto_type='two-step', model='semi-batch'):
         last_rto_id = self.get_last_rto_id()
-        current_id = last_rto_id + 1
 
         sql = ''' INSERT INTO rto(id,name,type,model,date)
               VALUES(?,?,?,?,?) '''
-        cur = self.conn.cursor()
-        cur.execute(sql, (current_id, name, rto_type,
+        try:
+            cur = self.conn.cursor()
+            current_id = last_rto_id + 1
+            cur.execute(sql, (current_id, name, rto_type,
                           model, datetime.datetime.now()))
-        self.conn.commit()
-
+            self.conn.commit()
+        except IntegrityError as e:
+          print(e)
+          # Keep trying to insert
+          return self.create_rto(name, rto_type, model)
+        
         return current_id
 
     def create_run(self, rto_id, iteration, status='completed'):
         last_id = self.get_last_run_id()
-        current_id = last_id + 1
-
         sql = ''' INSERT INTO run(id,rto_id,iteration,status)
               VALUES(?,?,?,?) '''
-        cur = self.conn.cursor()
-        cur.execute(sql, (current_id, rto_id, iteration,
+        
+        try:
+            current_id = last_id + 1
+            cur = self.conn.cursor()
+            cur.execute(sql, (current_id, rto_id, iteration,
                           status))
-        self.conn.commit()
+            self.conn.commit()
+        except IntegrityError as e:
+          print(e)
+          # Keep trying to insert
+          return self.create_run(rto_id, iteration, status)
 
         return current_id
 
@@ -118,6 +128,20 @@ class RTODataModel:
                 JOIN result_variable_values on result_variable_values.run_id = run.id
                 WHERE rto.type = (?) ORDER BY rto.id '''
         cur.execute(sql, (rto_type,))
+        db_results = cur.fetchall()
+        results = []
+        for row in db_results:
+            results.append(list(row))
+        
+        return results
+
+    def get_rto_experiment_results_by_id(self, start_id):
+        cur = self.conn.cursor()
+        sql = '''SELECT rto.id, rto.name, rto.type, run.id, run.status, iteration, var_name, value
+                FROM rto JOIN run ON run.rto_id = rto.id
+                JOIN result_variable_values on result_variable_values.run_id = run.id
+                WHERE rto.id >= (?) ORDER BY rto.id '''
+        cur.execute(sql, (start_id,))
         db_results = cur.fetchall()
         results = []
         for row in db_results:

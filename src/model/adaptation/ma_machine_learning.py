@@ -6,13 +6,13 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
 from warnings import simplefilter
 
-
-class MAGaussianProcesses:
-    def __init__(self, process_model, initial_data, neighbors_type='k_last', k_neighbors=10, filter_data=True):
+class MAMachineLearningRegression:
+    def __init__(self, process_model, initial_data, model, neighbors_type='k_last', k_neighbors=10, filter_data=True):
         self.process_model = process_model
         self.u_k = []
         self.samples_k = []
         self.models = None
+        self.ml_model = model
         self.initialize_models(initial_data)
         self.k_neighbors = k_neighbors
         self.neighbors_type = neighbors_type
@@ -23,16 +23,16 @@ class MAGaussianProcesses:
         u_train, y_train, _ = data
         self.u_k = list(u_train)
         self.samples_k = list(y_train)
-        self.update_gp_model(u_train, y_train)
+        self.update_model(u_train, y_train)
 
-    def update_gp_model(self, X, y):
+    def update_model(self, X, y):
         _, cols = y.shape
 
         # normalization
         self.update_normalization_params(X, y)
         X_norm = self.normalize_input(X)
 
-        # train the GP model
+        # train the model
         models = []
         for col in range(cols):
             models.append(self.train(X_norm, self.normalize_output(y, col)))
@@ -55,9 +55,7 @@ class MAGaussianProcesses:
             outputs[:, col].reshape(-1, 1)) for col in range(cols)]
 
     def train(self, X, y):
-        #kernel = RBF() + ConstantKernel(constant_value_bounds=(1e-5, 1.0))
-        gp_model = GaussianProcessRegressor()
-        return gp_model.fit(X, y)
+        return self.ml_model.fit(X, y)
 
     def get_modifiers(self, u):
         # normalize
@@ -95,7 +93,7 @@ class MAGaussianProcesses:
                 u_train = np.asarray(self.u_k)
                 y_train = np.asarray(self.samples_k)
 
-        self.update_gp_model(u_train, y_train)
+        self.update_model(u_train, y_train)
         if(self.filter_data == True):
             # if filter is on, only append new data to the model is sufficiently far from
             scaler = MinMaxScaler()

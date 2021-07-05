@@ -1,25 +1,30 @@
-import numpy as np
 import multiprocessing
 
 from optimization.rto import RTO
 from optimization.batch_profile_optimizer import BatchProfileOptimizer
 from model.adaptation.ma_gaussian_processes import MAGaussianProcesses
-from model.process.semi_batch import SemiBatchReactor
+from model.process.gas_lifted_wells import GasLiftwedWellSystem
 from model.utils import generate_samples_uniform
 
 n_experiments = 30
 n_iterations = 60
 data_size = 5
 initial_data_noise = 0.01
+n_wells = 2
 
-model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
-plant = SemiBatchReactor()
-u_real_optimum = [18.4427644, 0.00110823777, 227.792418]
-u_0 = [10.652103265931729, 0.0005141834799295323, 224.48063936756103]
-g_plant = np.array([0.025, 0.15])
-x_ub = [30, 0.002, 250]
-x_lb = [0, 0, 200]
+def build_config(n_wells, gor, PI, rho_o):
+    return { f'well{i}':  { 'GOR': gor[i], 'PI': PI[i], 'rho_o': rho_o[i] } for i in range(n_wells)}
 
+config_model = build_config(n_wells, [0.1,0.15], [2.2,2.2], [900,800])
+config_plant = build_config(n_wells, [0.1,0.15], [2.8,2.6], [900,800])
+
+model = GasLiftwedWellSystem(config_model)
+plant = GasLiftwedWellSystem(config_plant)
+
+u_0 = [1.0] * n_wells
+g_plant = n_wells * 7
+x_ub = [5] * n_wells
+x_lb = [0.5] * n_wells
 
 def run_rto(n_experiments, data_array, solver, db_file, neighbors, exp_name, noise, backoff):
     for i in range(n_experiments):
@@ -56,7 +61,7 @@ def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, con
         noise = cfg['noise']
         backoff = cfg['backoff']
 
-        exp_name = 'ma-gp-{}-{}-{}-{}'.format(solver['name'],
+        exp_name = 'ma-gp-glw-{}-{}-{}-{}'.format(solver['name'],
                                               neighbors, noise, backoff)
 
         p = multiprocessing.Process(target=run_rto, args=(
@@ -67,43 +72,17 @@ def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, con
     # wait for all to finish
     [job.join() for job in jobs]
 
-
-# config = [{'solver': 'de_scipy_best1bin',
-#            'db_file': '/mnt/d/rto_data/rto_poc_de_experiments.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.00}]
-# config = [{'solver': 'de_scipy_best1bin',
-#            'db_file': '/mnt/d/rto_data/rto_poc_derand1bin.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.05},
-#            {'solver': 'slsqp_scipy',
-#            'db_file': '/mnt/d/rto_data/rto_poc_exact_slsqp.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.05},
-#           {'solver': 'de_scipy_best1bin',
-#            'db_file': '/mnt/d/rto_data/rto_poc_debest1bin.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.00}]
 config = [
-          {'solver': {'name': 'slsqp_scipy'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
-           'neighbors': 'k_last',
-           'noise': 0.01,
-           'backoff': 0.0},
+        #   {'solver': {'name': 'slsqp_scipy'},
+        #    'db_file': '/mnt/d/rto_data/rto_thesis_experiments.db',
+        #    'neighbors': 'k_last',
+        #    'noise': 0.01,
+        #    'backoff': 0.0},
           {'solver': {'name': 'de_scipy_best1bin'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
+           'db_file': '/mnt/d/rto_data/rto_thesis_experiments.db',
            'neighbors': 'k_last',
            'noise': 0.01,
            'backoff': 0.00},
-           {'solver': {'name': 'de_sqp_hybrid'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
-           'neighbors': 'k_last',
-           'noise': 0.01,
-           'backoff': 0.00}
            ]
 
 

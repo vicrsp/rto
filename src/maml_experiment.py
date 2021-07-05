@@ -3,9 +3,10 @@ import multiprocessing
 
 from optimization.rto import RTO
 from optimization.batch_profile_optimizer import BatchProfileOptimizer
-from model.adaptation.ma_gaussian_processes import MAGaussianProcesses
+from model.adaptation.ma_machine_learning import MAMachineLearningRegression
 from model.process.semi_batch import SemiBatchReactor
 from model.utils import generate_samples_uniform
+from sklearn.ensemble import RandomForestRegressor
 
 n_experiments = 30
 n_iterations = 60
@@ -30,8 +31,8 @@ def run_rto(n_experiments, data_array, solver, db_file, neighbors, exp_name, noi
             x_ub, x_lb, g_plant, solver=solver, backoff=backoff)
 
         # build the adaptation model
-        adaptation = MAGaussianProcesses(
-            model, initial_data, filter_data=True, neighbors_type=neighbors)
+        adaptation = MAMachineLearningRegression(
+            model, initial_data, model=RandomForestRegressor(), filter_data=True, neighbors_type=neighbors)
 
         u_0_feas = initial_data[0][-1]
         rto = RTO(model, plant, opt_problem, adaptation,
@@ -56,7 +57,7 @@ def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, con
         noise = cfg['noise']
         backoff = cfg['backoff']
 
-        exp_name = 'ma-gp-{}-{}-{}-{}'.format(solver['name'],
+        exp_name = 'ma-rf-{}-{}-{}-{}'.format(solver,
                                               neighbors, noise, backoff)
 
         p = multiprocessing.Process(target=run_rto, args=(
@@ -88,23 +89,16 @@ def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, con
 #            'neighbors': 'k_last',
 #            'noise': 0.05,
 #            'backoff': 0.00}]
-config = [
-          {'solver': {'name': 'slsqp_scipy'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
+config = [{'solver': 'slsqp_scipy',
+           'db_file': '/mnt/d/rto_data/rto_poc_sqp_experiments.db',
            'neighbors': 'k_last',
            'noise': 0.01,
            'backoff': 0.0},
-          {'solver': {'name': 'de_scipy_best1bin'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
+          {'solver': 'de_scipy_best1bin',
+           'db_file': '/mnt/d/rto_data/rto_poc_de_experiments.db',
            'neighbors': 'k_last',
            'noise': 0.01,
-           'backoff': 0.00},
-           {'solver': {'name': 'de_sqp_hybrid'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
-           'neighbors': 'k_last',
-           'noise': 0.01,
-           'backoff': 0.00}
-           ]
+           'backoff': 0.00}]
 
 
 run_rto_experiment(n_experiments, data_size, initial_data_noise, config)
