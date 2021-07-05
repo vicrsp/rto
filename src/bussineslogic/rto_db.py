@@ -133,7 +133,3 @@ def init_rto_db(database):
         init_data(conn)
     else:
         print("Error! cannot create the database connection.")
-
-
-if __name__ == '__main__':
-    init_rto_db("/mnt/d/rto_data/rto_sbai_experiments.db")
