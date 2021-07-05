@@ -1,13 +1,9 @@
 import os
 import sys
 import numpy as np
-import json
 from scipy.integrate import odeint, solve_ivp
-from optimization.utils import find_nearest_idx
 
-# add the parent folder to path
-lib_path = os.path.abspath(os.path.join(__file__, '..', '..'))
-sys.path.append(lib_path)
+from .utils import find_nearest_idx
 
 CA_INDEX = 0
 CB_INDEX = 1
@@ -35,7 +31,7 @@ class SemiBatchReactor:
         for value in when:
             sample = []
             idx = find_nearest_idx(sim_results.t, value*self.stoptime)
-            for i, result in enumerate(sim_results.y):
+            for _, result in enumerate(sim_results.y):
                 val = result[idx]
                 if(noise == True):
                     sample.append(val + np.random.normal(0, 0.05*val))
@@ -55,7 +51,7 @@ class SemiBatchReactor:
         for time in samples.keys():
             idx = find_nearest_idx(sim_results.t, time*self.stoptime)
             sim_value = []
-            for i, result in enumerate(sim_results.y):
+            for _, result in enumerate(sim_results.y):
                 sim_value.append(result[idx])
 
             sim_values[time] = sim_value
@@ -102,7 +98,7 @@ class SemiBatchReactor:
         fx = Cc_tf * V_tf
         return -fx if noise == None else -fx * (1 + np.random.normal(scale=noise))
 
-    def get_constraints(self, x, sim_results, noise=None):
+    def get_constraints(self, x, noise=None):
         sim_results = self.simulate(x)
         Cb_tf = sim_results.y[1][-1]
         Cd_tf = sim_results.y[3][-1]

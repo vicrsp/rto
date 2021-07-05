@@ -3,7 +3,7 @@ import multiprocessing
 import yaml
 
 from rto.rto import RTO
-from rto.optimization.batch_profile_optimizer import BatchProfileOptimizer
+from rto.optimization.optimizer import ModelBasedOptimizer
 from rto.adaptation.ma_gaussian_processes import MAGaussianProcesses
 from rto.models.semi_batch import SemiBatchReactor
 from rto.utils import generate_samples_uniform
@@ -26,7 +26,7 @@ def run_rto(n_experiments, data_array, solver, db_file, neighbors, exp_name, noi
         print('{} experiment {}'.format(exp_name, i))
         initial_data = data_array[i]
         # build the model-based optimization problem
-        opt_problem = BatchProfileOptimizer(
+        opt_problem = ModelBasedOptimizer(
             x_ub, x_lb, g_plant, solver=solver, backoff=backoff)
 
         # build the adaptation model
@@ -38,7 +38,6 @@ def run_rto(n_experiments, data_array, solver, db_file, neighbors, exp_name, noi
                   iterations=n_iterations, db_file=db_file, name=exp_name, noise=noise)
 
         rto.run(u_0_feas)
-
 
 def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, config, max_threads=4):
 

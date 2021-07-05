@@ -6,11 +6,11 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
 from warnings import simplefilter
 
-from base import AdaptationResult, AdaptationStrategy
+from .base import AdaptationResult, AdaptationStrategy
 
 class MAGaussianProcesses(AdaptationStrategy):
     def __init__(self, process_model, initial_data, neighbors_type='k_last', k_neighbors=10, filter_data=True):
-        super().__init__(process_model, initial_data)
+        super().__init__(process_model, initial_data, 'modifier_adaptation')
         self.u_k = []
         self.samples_k = []
         self.models = None
@@ -20,7 +20,7 @@ class MAGaussianProcesses(AdaptationStrategy):
         self.filter_data = filter_data
 
     def get_adaptation(self, u):
-        return AdaptationResult('ma', {'modifiers': self.get_modifiers(u)})
+        return AdaptationResult({'modifiers': self.get_modifiers(u)})
 
     def initialize_models(self, data):
         u_train, y_train, _ = data

@@ -1,16 +1,21 @@
 adaptation: 'MAGP'
 db_file: '/mnt/d/rto_data/rto_experiments.db'
-sqp: 
-  name: 'SQP'
-  solver: 
-      name: 'slsqp_scipy'
-  neighbors: 'k_last'
-  noise: 0.01
-  backoff: 0.0
-de:
-  name: 'DE'
-  solver: 
-    name: 'de_scipy_best1bin'
-  neighbors: 'k_last'
-  noise: 0.01
-  backoff: 0.0
+repetitions: 30
+rto_iterations: 60
+initial_data_size: 5
+initial_data_noise: 0.01
+configs:
+  sqp: 
+    name: 'SQP'
+    solver: 
+        name: 'sqp'
+    neighbors: 'k_last'
+    noise: 0.01
+    backoff: 0.0
+  de:
+    name: 'DE'
+    solver: 
+      name: 'de'
+    neighbors: 'k_last'
+    noise: 0.01
+    backoff: 0.0

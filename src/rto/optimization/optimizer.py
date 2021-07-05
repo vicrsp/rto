@@ -8,7 +8,7 @@ class ModelBasedOptimizer:
         self.ub = ub
         self.g = g
         self.solver = solver['name']
-        self.solver_params = solver['params'] if 'params' in solver else None
+        self.solver_params = solver['params'] if 'params' in solver else {}
         self.backoff = backoff  # %
 
     def run(self, process_model, adaptation_strategy, x0):

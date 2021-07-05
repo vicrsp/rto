@@ -1,4 +1,4 @@
-from db.sqlite import create_connection
+from .db.sqlite import create_connection
 import datetime
 from sqlite3 import IntegrityError
 

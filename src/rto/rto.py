@@ -1,15 +1,14 @@
-from experiment.data_model import RTODataModel
+import logging
 import numpy as np
-import pandas as pd
 from datetime import datetime
 from timeit import default_timer as timer
+from .experiment.results_handler import ExperimentResultsHandler
 
-from experiment.experiment import RTOExperiment
-
+logging.basicConfig(format='[%(asctime)s]:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 
 class RTO:
     def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp', noise=0.01):
-        self.experiment = RTOExperiment(name, db_file)
+        self.experiment = ExperimentResultsHandler(name, db_file)
         self.iterations = iterations
         self.optimization_problem = optimization_problem
         self.adaptation_strategy = adaptation_strategy
@@ -18,9 +17,6 @@ class RTO:
         self.k_filter = 0.4
         self.noise_level = noise  # %
         self.name = name
-
-    def set_iterations(self, iterations):
-        self.iterations = iterations
 
     def filter_input(self, xnew, xold):
         return xold + (xnew - xold) * self.k_filter
@@ -62,7 +58,7 @@ class RTO:
                 f_input = np.minimum(f_input, self.optimization_problem.ub)
                 opt_feasible = False
 
-                print('unfeasible optimization result. using random generated point.')
+                logging.warning('unfeasible optimization result. using random generated point.')
 
             f_previous = f_input
 
@@ -73,6 +69,7 @@ class RTO:
             # Save the results
             self.experiment.save_results(
                 rto_id, iteration, fr, gr, fm, gm, f_input, opt_feasible, opt_time, n_fev)
-            print('[{}]-[{}]: iteration={}'.format(
-                datetime.now().strftime("%d/%m/%Y %H:%M:%S"), self.name, iteration))
+
+            logging.debug(f'[{self.name}]: iteration={iteration}')
+           
         return rto_id
