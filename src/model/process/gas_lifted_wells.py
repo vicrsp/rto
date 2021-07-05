@@ -76,6 +76,19 @@ class GasLiftwedWellSystem:
     w_gl = cd.MX.sym('w_gl', self.n_w)
 
     # algebraic equations used for substitution in the ODE model
+    # p_ai = 1e-5*((R*self.T_a/(self.V_a*Mw) + g*self.H_a/self.V_a)*m_ga*1e3)
+    # p_wh = 1e-5*(((R*self.T_w/Mw)*(m_gt*1e3/(self.L_w*self.A_w + self.L_bh*self.A_bh - m_ot*1e3/self.rho_o))))
+    # rho_ai = 1e-2*(Mw/(R*self.T_a)*p_ai*1e5)
+    # rho_m = 1e-2*(((m_gt*1e3 + m_ot*1e3 - self.rho_o*self.L_bh*self.A_bh)))/(self.L_w*self.A_w)
+    # w_pc = self.C_pc*cd.sqrt(cd.fmax(0, rho_m*1e2*(p_wh*1e5 - self.p_m*1e5)))
+    # w_pg = (m_gt*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
+    # w_po = (m_ot*1e3/(m_gt*1e3+m_ot*1e3))*w_pc
+    # p_wi = 1e-5*((p_wh*1e5 + (m_ot*1e3+m_gt*1e3-self.rho_o*self.L_bh*self.A_bh)*(g*self.H_w/(self.A_w*self.L_w))))
+    # p_bh = 1e-5*(p_wi*1e5 + rho_m*1e2*g*self.H_bh)
+    # w_iv = self.C_iv*cd.sqrt(cd.fmax(0,rho_ai*1e2*(p_ai*1e5 - p_wi*1e5)))
+    # w_ro = (self.PI)*1e-6*(self.p_res*1e5 - p_bh*1e5)
+    # w_rg = 1e1*self.GOR*w_ro
+    
     p_ai = 1e-5*(((R*self.T_a/(self.V_a*Mw) + g*self.H_a/self.V_a)*m_ga*1e3) + (Mw/(R*self.T_a)*((R*self.T_a/(self.V_a*Mw) + g*self.H_a/self.V_a)*m_ga*1e3))*g*self.H_a)
     p_wh = 1e-5*(((R*self.T_w/Mw)*(m_gt*1e3/(self.L_w*self.A_w + self.L_bh*self.A_bh - m_ot*1e3/self.rho_o))) - ((m_gt*1e3+m_ot*1e3 )/(self.L_w*self.A_w))*g*self.H_w/2)
     rho_ai = 1e-2*(Mw/(R*self.T_a)*p_ai*1e5)
@@ -138,7 +151,7 @@ class GasLiftwedWellSystem:
 
     return sys_dict
 
-  def simulate_casadi(self, x0, u, tf=1.0):
+  def simulate(self, x0, u, tf=1.0):
     ode = self.sys['ode']
     # create IDAS integrator
     opts = {'tf': tf}
@@ -160,9 +173,9 @@ class GasLiftwedWellSystem:
 
     return results_well
   
-  def get_steady_state_casadi(self, u):
+  def get_steady_state(self, u):
     results = {}
-    xss, y = self.solve_steady_state_casadi(u)
+    xss, y = self.solve_steady_state(u)
     xss = np.concatenate((xss, y))
 
     for i, well in enumerate(self.wells):
@@ -170,7 +183,7 @@ class GasLiftwedWellSystem:
 
     return results
 
-  def solve_steady_state_casadi(self, u):
+  def solve_steady_state(self, u):
     
     dx0 = np.array([1.32*np.ones((self.n_w,)), 0.8*np.ones((self.n_w,)), 6*np.ones((self.n_w,))]).flatten()
     lbx = np.array([0.01*np.ones((self.n_w,)), 0.01*np.ones((self.n_w,)), 0.01*np.ones((self.n_w,))]).flatten()
@@ -196,22 +209,19 @@ class GasLiftwedWellSystem:
     return self.get_objective_quadratic(u, noise)
 
   def get_objective_quadratic(self, u, noise=None):
-    sys = self.build_casadi_sys()
-    xss, _ = self.solve_steady_state_casadi(u)
-
-    fx = float(sys['f_quad'](xss[:-2], u))
+    xss, _ = self.solve_steady_state(u)
+    fx = float(self.sys['f_quad'](xss[:-self.n_w], u))
 
     return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
 
   def get_objective_linear(self, u, noise=None):
-    xss, _ = self.solve_steady_state_casadi(u)
+    xss, _ = self.solve_steady_state(u)
 
     fx = float(self.sys['f_linear'](xss[:-2], u))
     return -fx if noise == None else -fx * (1 + np.random.normal(scale=noise))
 
   def get_constraints(self, u, noise=None):
-    xss, _ = self.solve_steady_state_casadi(u)
-
+    xss, _ = self.solve_steady_state(u)
     g = float(self.sys['f_g'](xss[:-2], u))
     
     if(noise != None):
@@ -223,11 +233,7 @@ class GasLiftwedWellSystem:
 #     config = yaml.safe_load(f)
 # gs = GasLiftwedWellSystem(config)
 
-# config = { 'well1': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 },
-#           'well2': { 'GOR': 0.1, 'PI': 2.2, 'rho_o': 900, 'p_res': 150 }} 
-# gs = GasLiftwedWellSystem(config)
-# # gs.casadi_ode()
-# sim_res = gs.simulate_casadi(x0=[1,1,1,1,1,1],u=[1,1],tf=1)
+# sim_res = gs.simulate(x0=[1,1,1,1,1,1],u=[1,1],tf=1)
 # sol = gs.get_steady_state_casadi(u=np.ones((gs.n_w,)))
 # fquad = gs.get_objective_quadratic(u=[1,1])
 # fl = gs.get_objective_linear(u=[1,1])
