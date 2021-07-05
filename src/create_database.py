@@ -1,5 +1,5 @@
 import sys, getopt, os
-from bussineslogic.rto_db import init_rto_db
+from rto.experiment.db.sqlite import create_rto_db
 
 MEMORY_DATABASE = ":memory:"
 
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     print(f'Creating database to {db_path}')
     try:
         touch(db_path)
-        init_rto_db(db_path)
+        create_rto_db(db_path)
     except Exception as e:
       print(f'Error creating database: {e}')
     

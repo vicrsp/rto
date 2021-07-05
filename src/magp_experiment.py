@@ -1,11 +1,12 @@
 import numpy as np
 import multiprocessing
+import yaml
 
-from optimization.rto import RTO
-from optimization.batch_profile_optimizer import BatchProfileOptimizer
-from model.adaptation.ma_gaussian_processes import MAGaussianProcesses
-from model.process.semi_batch import SemiBatchReactor
-from model.utils import generate_samples_uniform
+from rto.rto import RTO
+from rto.optimization.batch_profile_optimizer import BatchProfileOptimizer
+from rto.adaptation.ma_gaussian_processes import MAGaussianProcesses
+from rto.models.semi_batch import SemiBatchReactor
+from rto.utils import generate_samples_uniform
 
 n_experiments = 30
 n_iterations = 60
@@ -19,7 +20,6 @@ u_0 = [10.652103265931729, 0.0005141834799295323, 224.48063936756103]
 g_plant = np.array([0.025, 0.15])
 x_ub = [30, 0.002, 250]
 x_lb = [0, 0, 200]
-
 
 def run_rto(n_experiments, data_array, solver, db_file, neighbors, exp_name, noise, backoff):
     for i in range(n_experiments):
@@ -44,20 +44,21 @@ def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, con
 
     # generate all the data before
     initial_data_array = [generate_samples_uniform(
-        model, plant, g_plant, u_0, initial_data_size, noise=initial_data_noise) for i in range(n_experiments)]
+        model, plant, g_plant, u_0, initial_data_size, noise=initial_data_noise) for _ in range(n_experiments)]
 
     # create the list of jobs to be run
     jobs = []
+    db_file = config['db_file']
+    adaptation = config['adaptation']
 
     for cfg in config:
         solver = cfg['solver']
-        db_file = cfg['db_file']
         neighbors = cfg['neighbors']
         noise = cfg['noise']
         backoff = cfg['backoff']
+        name = cfg['name']
 
-        exp_name = 'ma-gp-{}-{}-{}-{}'.format(solver['name'],
-                                              neighbors, noise, backoff)
+        exp_name = f'{adaptation}-{name}-{neighbors}-{noise}-{backoff}'
 
         p = multiprocessing.Process(target=run_rto, args=(
             n_experiments, initial_data_array, solver, db_file, neighbors, exp_name, noise, backoff))
@@ -68,44 +69,8 @@ def run_rto_experiment(n_experiments, initial_data_size, initial_data_noise, con
     [job.join() for job in jobs]
 
 
-# config = [{'solver': 'de_scipy_best1bin',
-#            'db_file': '/mnt/d/rto_data/rto_poc_de_experiments.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.00}]
-# config = [{'solver': 'de_scipy_best1bin',
-#            'db_file': '/mnt/d/rto_data/rto_poc_derand1bin.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.05},
-#            {'solver': 'slsqp_scipy',
-#            'db_file': '/mnt/d/rto_data/rto_poc_exact_slsqp.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.05},
-#           {'solver': 'de_scipy_best1bin',
-#            'db_file': '/mnt/d/rto_data/rto_poc_debest1bin.db',
-#            'neighbors': 'k_last',
-#            'noise': 0.05,
-#            'backoff': 0.00}]
-config = [
-          {'solver': {'name': 'slsqp_scipy'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
-           'neighbors': 'k_last',
-           'noise': 0.01,
-           'backoff': 0.0},
-          {'solver': {'name': 'de_scipy_best1bin'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
-           'neighbors': 'k_last',
-           'noise': 0.01,
-           'backoff': 0.00},
-           {'solver': {'name': 'de_sqp_hybrid'},
-           'db_file': '/mnt/d/rto_data/rto_sbai_experiments.db',
-           'neighbors': 'k_last',
-           'noise': 0.01,
-           'backoff': 0.00}
-           ]
-
+# loads the gas lift config
+with open('rto/experiment/configs/rto_magp.yaml') as f:
+    config = yaml.safe_load(f)
 
 run_rto_experiment(n_experiments, data_size, initial_data_noise, config)
-

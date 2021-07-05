@@ -38,7 +38,7 @@ def init_data(conn):
     conn.commit()
 
 
-def init_rto_db(database):
+def create_rto_db(database):
     sql_create_rto_table = """ CREATE TABLE IF NOT EXISTS rto (
                                         id integer PRIMARY KEY,
                                         name text NOT NULL,

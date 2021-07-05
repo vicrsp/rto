@@ -6,18 +6,21 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
 from warnings import simplefilter
 
+from base import AdaptationResult, AdaptationStrategy
 
-class MAGaussianProcesses:
+class MAGaussianProcesses(AdaptationStrategy):
     def __init__(self, process_model, initial_data, neighbors_type='k_last', k_neighbors=10, filter_data=True):
-        self.process_model = process_model
+        super().__init__(process_model, initial_data)
         self.u_k = []
         self.samples_k = []
         self.models = None
-        self.initialize_models(initial_data)
+        self.initialize_models(self.initial_data)
         self.k_neighbors = k_neighbors
         self.neighbors_type = neighbors_type
         self.filter_data = filter_data
-        self.initial_data = initial_data
+
+    def get_adaptation(self, u):
+        return AdaptationResult('ma', {'modifiers': self.get_modifiers(u)})
 
     def initialize_models(self, data):
         u_train, y_train, _ = data
@@ -55,7 +58,6 @@ class MAGaussianProcesses:
             outputs[:, col].reshape(-1, 1)) for col in range(cols)]
 
     def train(self, X, y):
-        #kernel = RBF() + ConstantKernel(constant_value_bounds=(1e-5, 1.0))
         gp_model = GaussianProcessRegressor()
         return gp_model.fit(X, y)
 
@@ -67,7 +69,7 @@ class MAGaussianProcesses:
             # ignore generated warnings
             simplefilter("ignore")
             return np.asarray([self.denormalize_output(model.predict(u_norm), index) for index, model in enumerate(self.models)])
-
+    
     def get_model_parameters(self):
         return self.process_model.initial_parameters
 

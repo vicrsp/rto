@@ -1,9 +1,9 @@
-from .rto_db import create_connection
+from db.sqlite import create_connection
 import datetime
 from sqlite3 import IntegrityError
 
 class RTODataModel:
-    def __init__(self, file=r"D:\rto\src\data\rto.db"):
+    def __init__(self, file):
         self.conn = create_connection(file)
 
     def create_rto(self, name='rto', rto_type='two-step', model='semi-batch'):
