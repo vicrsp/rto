@@ -1,6 +1,7 @@
 Output/
 figures/
 data/
+dist/
 *.asv
 .ipynb_checkpoints/
 .vscode/.ropeproject
@@ -10,4 +11,4 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
-src/notebooks/*.pdf
+*.egg-info
