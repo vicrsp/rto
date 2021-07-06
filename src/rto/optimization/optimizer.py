@@ -11,7 +11,7 @@ class ModelBasedOptimizer:
         self.solver_params = solver['params'] if 'params' in solver else {}
         self.backoff = backoff  # %
 
-    def run(self, process_model, adaptation_strategy, x0):
+    def run(self, process_model, adaptation_strategy=None, x0=[]):
         bounds = Bounds(self.lb, self.ub)
         x_start = (np.asarray(self.ub) - np.asarray(self.lb)) / \
             2 if len(x0) == 0 else x0
@@ -22,6 +22,8 @@ class ModelBasedOptimizer:
     def optimize(self, process_model, adaptation_strategy, bounds, x0):
         def constraints(x):
             g_model = process_model.get_constraints(x).reshape(-1,)
+            if(adaptation_strategy is None):
+                return g_model
             if(adaptation_strategy.type != 'modifier_adaptation'):
                 return g_model
             adaptation = adaptation_strategy.get_adaptation(x).get()
@@ -29,6 +31,8 @@ class ModelBasedOptimizer:
 
         def func(x):
             f_model = process_model.get_objective(x)
+            if(adaptation_strategy is None):
+                return f_model
             if(adaptation_strategy.type != 'modifier_adaptation'):
                 return f_model
             adaptation = adaptation_strategy.get_adaptation(x).get()

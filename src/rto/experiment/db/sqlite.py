@@ -26,7 +26,27 @@ def create_table(conn, create_table_sql):
         print(e)
 
 
+def clear_database(conn):
+    try:
+        sql_rto = '''delete from rto;'''
+        sql_run = '''delete from run;'''
+        sql_results = '''delete from result_variable_values;'''
+
+        queries = [sql_results, sql_run, sql_rto]
+        cur = conn.cursor()
+        for query in queries:        
+            cur.execute(query)
+            conn.commit()
+
+    except Error as e:
+      print(f'Error clearing database: {e}')
+    
+
+
 def init_data(conn):
+
+    clear_database(conn)
+
     sql_rto = '''INSERT INTO rto(id, name, type, model, date) VALUES (0, 'first RTO ever', 'oh', 'yeah',  NULL);'''
     sql_run = '''INSERT INTO run(id, iteration, status, rto_id) VALUES (0, 0, 'none',0);'''
 

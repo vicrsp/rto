@@ -1,7 +1,7 @@
 import sys, getopt, os
 from rto.experiment.db.sqlite import create_rto_db
 
-MEMORY_DATABASE = ":memory:"
+MEMORY_DATABASE = "file::memory:?cache=shared"
 
 def touch(fname):
     if os.path.exists(fname):
@@ -14,7 +14,7 @@ if __name__ == '__main__':
     folder_name = '~'
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hn:f:",["db=","folder="])
+        opts, args = getopt.getopt(sys.argv[1:],"hmn:f:",["db=","folder="])
     except getopt.GetoptError:
         print('create_database.py -n <db name> [-f] <folder>')
         sys.exit(2)
@@ -26,6 +26,14 @@ if __name__ == '__main__':
             folder_name = arg
         elif opt in ("-n", "--db"):
             db_name = arg
+        elif opt == '-m':
+            try:
+                create_rto_db(MEMORY_DATABASE)
+                print(f'Created memory database succesfully')
+                sys.exit()
+            except Exception as e:
+                print(f'Error creating memory database: {e}')
+
      
     if(db_name is None):
         print('Please provide a valid database name.')
