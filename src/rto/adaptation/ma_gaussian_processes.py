@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
@@ -77,6 +76,30 @@ class MAGaussianProcesses(AdaptationStrategy):
         data_size = len(self.u_k)
         neighbors_size = min(self.k_neighbors, data_size)
 
+        u_train, y_train = self.get_training_data(u, data_size, neighbors_size)
+        
+        self.update_gp_model(u_train, y_train)
+        self.update_gp_data(u, samples, neighbors_size)
+
+    def update_gp_data(self, u, samples, neighbors_size):
+        if(self.filter_data == True):
+            # if filter is on, only append new data to the model is sufficiently far from
+            scaler = MinMaxScaler()
+            u_norm = scaler.fit_transform(np.asarray(self.u_k))
+            nbrs = NearestNeighbors(
+                n_neighbors=neighbors_size, algorithm='ball_tree').fit(u_norm)
+            distances, _ = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
+            # if there is at least one operating point below the threshold
+            # then we should be able to ignore the new data
+            if(np.all(distances > 0.01)):
+                self.u_k.append(u)
+                self.samples_k.append(samples)
+
+        else:
+            self.u_k.append(u)
+            self.samples_k.append(samples)
+
+    def get_training_data(self, u, data_size, neighbors_size):
         if(self.neighbors_type == 'k_last'):  # use data from the k last operating points
             u_train = np.asarray(self.u_k[-neighbors_size:])
             y_train = np.asarray(self.samples_k[-neighbors_size:])
@@ -96,21 +119,4 @@ class MAGaussianProcesses(AdaptationStrategy):
             else:
                 u_train = np.asarray(self.u_k)
                 y_train = np.asarray(self.samples_k)
-
-        self.update_gp_model(u_train, y_train)
-        if(self.filter_data == True):
-            # if filter is on, only append new data to the model is sufficiently far from
-            scaler = MinMaxScaler()
-            u_norm = scaler.fit_transform(np.asarray(self.u_k))
-            nbrs = NearestNeighbors(
-                n_neighbors=neighbors_size, algorithm='ball_tree').fit(u_norm)
-            distances, _ = nbrs.kneighbors(scaler.transform(u.reshape(1, -1)))
-            # if there is at least one operating point below the threshold
-            # then we should be able to ignore the new data
-            if(np.all(distances > 0.01)):
-                self.u_k.append(u)
-                self.samples_k.append(samples)
-
-        else:
-            self.u_k.append(u)
-            self.samples_k.append(samples)
+        return u_train,y_train

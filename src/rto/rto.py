@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-from datetime import datetime
 from timeit import default_timer as timer
 from .experiment.results_handler import ExperimentResultsHandler
 
@@ -60,16 +59,17 @@ class RTO:
 
                 logging.warning('unfeasible optimization result. using random generated point.')
 
-            f_previous = f_input
-
             # Calculate the results
             data, fr, gr, fm, gm = self.calculate_results(f_input)
-            # Exexute the adaptation strategy
-            self.adaptation_strategy.adapt(f_input, data)
+            # Updates the operating point based on the adaptation strategy rule
+            f_input_updated = self.adaptation_strategy.update_operating_point(f_input, data)
+             # Execute the adaptation strategy
+            self.adaptation_strategy.adapt(f_input_updated, data)
             # Save the results
             self.experiment.save_results(
                 rto_id, iteration, fr, gr, fm, gm, f_input, opt_feasible, opt_time, n_fev)
-
+                
+            f_previous = f_input_updated
             logging.debug(f'[{self.name}]: iteration={iteration}')
            
         return rto_id

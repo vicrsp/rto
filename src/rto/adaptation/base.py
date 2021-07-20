@@ -15,6 +15,9 @@ class AdaptationStrategy(ABC):
     def get_adaptation(self, u):
         return None
 
+    def update_operating_point(self, u, samples):
+        return u
+
 
 class AdaptationResult:
     def __init__(self, values):
