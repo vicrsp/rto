@@ -6,8 +6,8 @@ import sys
 sys.path.append('/home/victor/git/rto/src')
 
 from rto.rto import RTO
-from rto.optimization.optimizer import ModelBasedOptimizer
-from rto.adaptation.ma_gaussian_processes_trust_region import MAGaussianProcessesTrustRegion
+from rto.optimization.optimizer import ModifierAdaptationOptimizer, ModifierAdaptationTrustRegionOptimizer
+from rto.adaptation.ma_gaussian_processes_trust_region import MAGaussianProcesses, MAGaussianProcessesTrustRegion
 from rto.models.semi_batch import SemiBatchReactor
 from rto.utils import generate_samples_uniform
 
@@ -24,12 +24,13 @@ def run_rto(n_experiments, n_iterations, data_array, solver, db_file, neighbors,
         print('{} experiment {}'.format(exp_name, i))
         initial_data = data_array[i]
         # build the model-based optimization problem
-        opt_problem = ModelBasedOptimizer(
+        opt_problem = ModifierAdaptationTrustRegionOptimizer(
             x_ub, x_lb, g_plant, solver=solver, backoff=backoff)
 
+        # initial_data_normalized = [opt_problem.normalize_input(uk) for uk in initial_data[0]]
         # build the adaptation model
         adaptation = MAGaussianProcessesTrustRegion(
-            model, initial_data, filter_data=True, neighbors_type=neighbors)
+            model, initial_data, ub=x_ub, lb=x_lb, filter_data=True, neighbors_type=neighbors)
 
         u_0_feas = initial_data[0][-1]
         rto = RTO(model, plant, opt_problem, adaptation,

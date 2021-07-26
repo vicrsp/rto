@@ -3,7 +3,7 @@ import numpy as np
 from timeit import default_timer as timer
 from .experiment.results_handler import ExperimentResultsHandler
 
-logging.basicConfig(format='[%(asctime)s]:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(format='[%(asctime)s]:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 
 class RTO:
     def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp', noise=0.01):
