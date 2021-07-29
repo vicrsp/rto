@@ -11,6 +11,9 @@ class ExperimentAnalyzer:
     def load(self, rto_type):
        return pd.DataFrame(self.md.get_rto_experiment_results(rto_type), columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'run.status', 'iteration', 'var_name', 'value'])
 
+    def load_by_id(self, id):
+       return pd.DataFrame(self.md.get_rto_experiment_results_by_id(id), columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'run.status', 'iteration', 'var_name', 'value'])
+
     def pre_process(self, results, f_plant=None, u_plant=None):
         def aggfunc(x):
             return x
@@ -40,9 +43,9 @@ class ExperimentAnalyzer:
 
         return results_pv
     
-    def plot_by_iteration(self, data, y, ylabel, title='', hue='run.status'):
+    def plot_by_iteration(self, data, y, ylabel, title='', style=None, hue='run.status'):
         fig, ax = plt.subplots(figsize=(8, 6))
-        sns.lineplot(data=data, y=y, x='iteration', hue=hue, ax=ax, palette='Set1', seed=1234, legend=True)
+        sns.lineplot(data=data, y=y, x='iteration', hue=hue, style=style, ax=ax, palette='Set1', seed=1234, legend=True)
         ax.set_xlabel('Iteration')
         ax.set_ylabel(ylabel)
         ax.get_legend().set_title('')

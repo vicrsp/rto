@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from .data_model import RTODataModel
 
 class ExperimentResultsHandler:
@@ -24,4 +25,6 @@ class ExperimentResultsHandler:
                         'u': ','.join(str(v) for v in f_input),
                         'opt_feasible': str(opt_feasible), 'opt_time': opt_time, 'n_fev': n_fev}
         self.md.save_results(run_id, results_dict)
+        logging.debug(f'[{self.name}]: iteration={index}; cost_real={fr}')
+
         return run_id

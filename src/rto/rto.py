@@ -70,6 +70,5 @@ class RTO:
                 rto_id, iteration, fr, gr, fm, gm, f_input, opt_feasible, opt_time, n_fev)
                 
             f_previous = f_input_updated
-            logging.debug(f'[{self.name}]: iteration={iteration}')
            
         return rto_id

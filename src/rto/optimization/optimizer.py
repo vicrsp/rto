@@ -60,24 +60,10 @@ class ModifierAdaptationOptimizer(ModelBasedOptimizer):
         nlc = self._get_nlc(constraints)
         if(self.solver == 'de'):
             result = differential_evolution(
-                func, bounds, maxiter=500, atol=0.0001, polish=False, constraints=nlc, **self.solver_params)
+                func, bounds, maxiter=1000, atol=0.0001, polish=False, constraints=nlc, **self.solver_params)
         elif(self.solver == 'sqp'):
             result = minimize(func, x0, method='SLSQP',
                               bounds=bounds, constraints=nlc, options={'disp': False, 'ftol': 0.000001, 'maxiter': 1000})
-        # elif(self.solver == 'bayes'):
-        #     penalty_factor = 100
-        #     def penalty_func(x):
-        #         x_array = np.array(x)
-        #         fobj = func(x_array)
-        #         g = np.minimum(np.zeros_like(self.g), self.g - constraints(x_array))
-
-        #         return fobj + penalty_factor*(g @ g.T)
-        #     dimensions = [(float(self.lb[i]), float(self.ub[i])) for i in range(len(x0))]
-        #     result = gp_minimize(penalty_func, dimensions=dimensions, acq_func="EI", n_calls=100, verbose=True, noise=1e-10)
-
-        #     result.x = np.array(result.x)
-        #     result.success = not np.any(constraints(result.x) > nlc.ub)
-
         # check for feasibility
         isUnfeasible = np.any(constraints(result.x) > nlc.ub)
         if(result.success == False & isUnfeasible):
@@ -129,7 +115,7 @@ class ModifierAdaptationTrustRegionOptimizer(ModelBasedOptimizer):
         nlc = self._get_nlc(constraints, radius)
         if(self.solver == 'de'):
             result = differential_evolution(
-                func, bounds=adj_bounds, disp=False, maxiter=100, atol=0.0001, polish=False, constraints=nlc, **self.solver_params)
+                func, bounds=adj_bounds, disp=False, maxiter=1000, atol=0.0001, polish=False, constraints=nlc, **self.solver_params)
         elif(self.solver == 'sqp'):
             result = minimize(func, x0, method='SLSQP',
                               bounds=adj_bounds, constraints=nlc, options={'disp': False, 'ftol': 0.000001, 'maxiter': 1000})

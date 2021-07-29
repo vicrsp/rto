@@ -2,7 +2,6 @@ import logging
 import numpy as np
 from .ma_gaussian_processes import MAGaussianProcesses
 from .base import AdaptationResult
-logging.basicConfig(format='[%(asctime)s]:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 
 class MAGaussianProcessesTrustRegion(MAGaussianProcesses):
     def __init__(self, process_model, initial_data, ub, lb, neighbors_type='k_last', k_neighbors=10, filter_data=True):
@@ -12,6 +11,7 @@ class MAGaussianProcessesTrustRegion(MAGaussianProcesses):
         self.tr_radii_max = 1
         self.tr_radii_start = 0.9
         self.raddi_k = [self.tr_radii_start]
+        self.raddi_tol = 1e-6
 
     def get_adaptation(self, u):
         return AdaptationResult({'modifiers': self.get_modifiers(u), 'trust_region_radius': self.raddi_k[-1]})
@@ -40,7 +40,6 @@ class MAGaussianProcessesTrustRegion(MAGaussianProcesses):
 
         eta1, eta2, eta3 = self.tr_eta
         cost_ratio = self.calculate_cost_reduction_ratio(u_k, d_k, u_k_cost, d_cost)
-        logging.debug(f'Cost ratio : {cost_ratio}')
         # update the trust region radius
         self.update_trust_region_radius(cost_ratio, eta2, eta3, d_k)
         # # update the operating point
@@ -54,8 +53,10 @@ class MAGaussianProcessesTrustRegion(MAGaussianProcesses):
         t1, t2 = self.tr_t
         if(cost_ratio < eta2):
             raddi = t1 * raddi
-        elif (cost_ratio > eta3)&(np.linalg.norm(d_k) == raddi):
+            logging.debug(f'MAGPTR: raddi updated to: {raddi}')
+        elif (cost_ratio > eta3)&(np.abs(np.linalg.norm(d_k) - raddi) < self.raddi_tol):
             raddi = max(t2 * raddi, self.tr_radii_max)
+            logging.debug(f'MAGPTR: raddi updated to: {raddi}')
         
         self.raddi_k.append(raddi)
-        logging.debug(f'Raddi updated to: {raddi}')
+        

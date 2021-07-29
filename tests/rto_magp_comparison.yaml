@@ -1,14 +1,14 @@
-adaptation: 'MAGPTR'
 db_file: '/home/victor/git/rto/tests/test.db'
 repetitions: 30
 rto_iterations: 60
 initial_data_size: 5
-initial_data_noise: 0.00
+initial_data_noise: 0.01
 configs:
   de:
     name: 'DE'
     solver: 
       name: 'de'
+      params: {'strategy': 'best1bin', 'maxiter': 500}
     neighbors: 'k_last'
-    noise: 0.00
+    noise: 0.01
     backoff: 0.0
