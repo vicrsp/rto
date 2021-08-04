@@ -18,11 +18,11 @@ class MAGaussianProcesses(AdaptationStrategy):
         self.neighbors_type = neighbors_type
         self.filter_data = filter_data
 
-    def get_adaptation(self, u):
-        return AdaptationResult({'modifiers': self.get_modifiers(u)})
+    def get_adaptation(self, u, return_std=False):
+        return AdaptationResult({'modifiers': self.get_modifiers(u, return_std)})
 
     def initialize_models(self, data):
-        u_train, y_train, _ = data
+        u_train, y_train = data.u, data.y
         u_train_norm = self.normalize_input(u_train)
 
         self.u_k = list(u_train_norm)
@@ -39,7 +39,8 @@ class MAGaussianProcesses(AdaptationStrategy):
         # train the GP model
         models = []
         for col in range(cols):
-            models.append(self.train(X_norm, self.normalize_model_output(y, col)))
+            # models.append(self.train(X_norm, self.normalize_model_output(y, col)))
+            models.append(self.train(X_norm, y[:, col].reshape(-1, 1)))
 
         self.models = models
 
@@ -59,10 +60,10 @@ class MAGaussianProcesses(AdaptationStrategy):
             outputs[:, col].reshape(-1, 1)) for col in range(cols)]
     
     def train(self, X, y):
-        gp_model = GaussianProcessRegressor()
+        gp_model = GaussianProcessRegressor(normalize_y=True)
         return gp_model.fit(X, y)
 
-    def get_modifiers(self, u):
+    def get_modifiers(self, u, return_std=True):
         # First convert to [0,1] interval
         u_norm = self.normalize_input(u.reshape(1, -1))
         # Then normalize to the model input space
@@ -71,7 +72,13 @@ class MAGaussianProcesses(AdaptationStrategy):
         with catch_warnings():
             # ignore generated warnings
             simplefilter("ignore")
-            return np.asarray([self.denormalize_model_output(model.predict(u_norm_model), index) for index, model in enumerate(self.models)])
+            # results = []
+            # for index, model in enumerate(self.models):
+            #     pred_mean, pred_std = model.predict(u_norm_model, return_std=True)
+            #     results.append([self.denormalize_model_output(pred_mean, index)[0], pred_std[0]])
+            # return np.asarray(results)
+            # return np.asarray([self.denormalize_model_output(model.predict(u_norm_model,return_std=return_std), index) for index, model in enumerate(self.models)])
+            return np.asarray([model.predict(u_norm_model,return_std=return_std) for model in self.models])
     
     def adapt(self, u, samples):
         data_size = len(self.u_k)

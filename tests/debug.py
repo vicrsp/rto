@@ -1,12 +1,13 @@
 import numpy as np
 import multiprocessing
 import yaml
+from bunch import Bunch
 
 import sys
 sys.path.append('/home/victor/git/rto/src')
 
 from rto.rto import RTO
-from rto.optimization.optimizer import ModifierAdaptationOptimizer, ModifierAdaptationTrustRegionOptimizer
+from rto.optimization.optimizer import ModifierAdaptationOptimizer, ModifierAdaptationTrustRegionOptimizer, ModelBasedBayesianOptimizer
 from rto.adaptation.ma_gaussian_processes_trust_region import MAGaussianProcesses, MAGaussianProcessesTrustRegion
 from rto.models.semi_batch import SemiBatchReactor
 from rto.utils import generate_samples_uniform
@@ -22,17 +23,18 @@ x_lb = [0, 0, 200]
 def run_rto(n_experiments, n_iterations, data_array, solver, db_file, neighbors, exp_name, noise, backoff):
     for i in range(n_experiments):
         print('{} experiment {}'.format(exp_name, i))
-        initial_data = data_array[i]
+        u, y, measurements = data_array[i]
+        initial_data = Bunch(u=u, y=y, measurements=measurements)
         # build the model-based optimization problem
-        opt_problem = ModifierAdaptationTrustRegionOptimizer(
+        opt_problem = ModelBasedBayesianOptimizer(
             x_ub, x_lb, g_plant, solver=solver, backoff=backoff)
 
         # initial_data_normalized = [opt_problem.normalize_input(uk) for uk in initial_data[0]]
         # build the adaptation model
-        adaptation = MAGaussianProcessesTrustRegion(
+        adaptation = MAGaussianProcesses(
             model, initial_data, ub=x_ub, lb=x_lb, filter_data=True, neighbors_type=neighbors)
 
-        u_0_feas = initial_data[0][-1]
+        u_0_feas = u[-1]
         rto = RTO(model, plant, opt_problem, adaptation,
                   iterations=n_iterations, db_file=db_file, name=exp_name, noise=noise)
 

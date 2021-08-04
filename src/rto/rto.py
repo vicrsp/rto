@@ -31,44 +31,58 @@ class RTO:
         return data, fr, gr, fm, gm
 
     def run(self, u_0):
-        rto_id = self.experiment.create_rto()
-        f_input = u_0
-        f_previous = u_0
-
-        self.experiment.save_initial_data(
-            self.adaptation_strategy.initial_data, rto_id)
-        initial_data_size = len(self.adaptation_strategy.initial_data[0])
+        u_current = u_0
+        u_previous = u_0
+        rto_id, best_plant_objective = self.initialize_rto_cycle()
+        initial_data_size = len(self.adaptation_strategy.initial_data.u)
 
         for i in range(self.iterations):
             iteration = i + initial_data_size
-            start = timer()
-            _, f_input, n_fev = self.optimization_problem.run(
-                self.process_model, self.adaptation_strategy, f_input)
-            end = timer()
-            opt_time = end - start
-
-            opt_feasible = True
-            if(len(f_input) > 0):
-                f_input = self.filter_input(f_input, f_previous)
-            else:
-                f_input = f_previous * (1 + np.random.normal(scale=0.01))
-                # ensure new random point is feasible
-                f_input = np.maximum(f_input, self.optimization_problem.lb)
-                f_input = np.minimum(f_input, self.optimization_problem.ub)
-                opt_feasible = False
-
-                logging.warning('unfeasible optimization result. using random generated point.')
-
+            # Solve the model-based optimization problem
+            u_current, opt_time, n_fev = self.solve_model_based_optimization_problem(u_current, best_plant_objective)
+            # Define the next operating point
+            u_current, opt_feasible = self.define_next_operating_point(u_current, u_previous)
             # Calculate the results
-            data, fr, gr, fm, gm = self.calculate_results(f_input)
+            data, fr, gr, fm, gm = self.calculate_results(u_current)
+            # Update the best solution
+            if((fr < best_plant_objective) & np.all(gr <= self.optimization_problem.g)):
+                best_plant_objective = fr
             # Updates the operating point based on the adaptation strategy rule
-            f_input_updated = self.adaptation_strategy.update_operating_point(f_input, data)
-             # Execute the adaptation strategy
-            self.adaptation_strategy.adapt(f_input_updated, data)
+            u_updated = self.adaptation_strategy.update_operating_point(u_current, data)
+            # Execute the adaptation strategy
+            self.adaptation_strategy.adapt(u_updated, data)
             # Save the results
-            self.experiment.save_results(
-                rto_id, iteration, fr, gr, fm, gm, f_input, opt_feasible, opt_time, n_fev)
-                
-            f_previous = f_input_updated
+            self.experiment.save_results(rto_id, iteration, fr, gr, fm, gm, u_updated, opt_feasible, opt_time, n_fev)
+            # update the current solution
+            u_previous = u_updated
            
         return rto_id
+
+    def define_next_operating_point(self, u_current, u_previous):
+        opt_feasible = True
+        if(len(u_current) > 0):
+            u_current = self.filter_input(u_current, u_previous)
+        else:
+            u_current = u_previous * (1 + np.random.normal(scale=0.01))
+            # ensure new random point is inside feasible region
+            u_current = np.maximum(u_current, self.optimization_problem.lb)
+            u_current = np.minimum(u_current, self.optimization_problem.ub)
+            opt_feasible = False
+
+            logging.warning('unfeasible optimization result. using random generated point.')
+        return u_current, opt_feasible
+
+    def solve_model_based_optimization_problem(self, u_current, best_plant_objective):
+        start = timer()
+        _, u_current, n_fev = self.optimization_problem.run(
+            self.process_model, self.adaptation_strategy, u_current, best_plant_objective)
+        end = timer()
+        opt_time = end - start
+
+        return u_current, opt_time, n_fev
+
+    def initialize_rto_cycle(self):
+        rto_id = self.experiment.create_rto()        
+        self.experiment.save_initial_data(self.adaptation_strategy.initial_data, rto_id)
+        best_solution = np.min(self.adaptation_strategy.initial_data.measurements[:,0])
+        return rto_id, best_solution

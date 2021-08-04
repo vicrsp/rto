@@ -12,8 +12,8 @@ class ExperimentResultsHandler:
         return rto_id
 
     def save_initial_data(self, initial_data, rto_id):
-        for index, u0_i in enumerate(initial_data[0]):
-            fr, gr, fm, gm = initial_data[2][index]
+        for index, u0_i in enumerate(initial_data.u):
+            fr, gr, fm, gm = initial_data.measurements[index]
             self.save_results(rto_id, index, fr, gr, fm,
                               gm, u0_i, True, 0, 0, 'initialization')
 
