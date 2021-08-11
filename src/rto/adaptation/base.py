@@ -10,12 +10,6 @@ class AdaptationStrategy(ABC):
         self.lb = np.array(lb)
         self.ub = np.array(ub)
 
-    def normalize_input(self, X):
-        return (X - self.lb)/(self.ub - self.lb)
-    
-    def denormalize_input(self, X):
-        return X * (self.ub - self.lb) + self.lb
-
     def get_model_parameters(self):
         return self.process_model.initial_parameters
 

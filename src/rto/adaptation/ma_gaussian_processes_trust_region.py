@@ -16,6 +16,12 @@ class MAGaussianProcessesTrustRegion(MAGaussianProcesses):
     def get_adaptation(self, u):
         return AdaptationResult({'modifiers': self.get_modifiers(u), 'trust_region_radius': self.raddi_k[-1]})
 
+    def normalize_input(self, X):
+        return (X - self.lb)/(self.ub - self.lb)
+    
+    def denormalize_input(self, X):
+        return X * (self.ub - self.lb) + self.lb
+
     def calculate_cost_reduction_ratio(self, u, d, u_cost, d_cost):
         u_modifiers = self.get_modifiers(self.denormalize_input(u), False)
         d_modifiers = self.get_modifiers(self.denormalize_input(u + d), False)

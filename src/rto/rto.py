@@ -75,7 +75,7 @@ class RTO:
     def solve_model_based_optimization_problem(self, u_current, best_plant_objective):
         start = timer()
         _, u_current, n_fev = self.optimization_problem.run(
-            self.process_model, self.adaptation_strategy, u_current, best_plant_objective)
+            self.process_model, u_current, adaptation_strategy=self.adaptation_strategy, f_best=best_plant_objective)
         end = timer()
         opt_time = end - start
 

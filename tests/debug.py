@@ -7,10 +7,12 @@ import sys
 sys.path.append('/home/victor/git/rto/src')
 
 from rto.rto import RTO
-from rto.optimization.optimizer import ModifierAdaptationOptimizer, ModifierAdaptationTrustRegionOptimizer, ModelBasedBayesianOptimizer
+from rto.optimization.optimizer import ModelBasedOptimizer, ModifierAdaptationOptimizer
+from rto.optimization.bayesian import ModelBasedBayesianOptimizer
 from rto.adaptation.ma_gaussian_processes_trust_region import MAGaussianProcesses, MAGaussianProcessesTrustRegion
 from rto.models.semi_batch import SemiBatchReactor
 from rto.utils import generate_samples_uniform
+from rto.models.williams_otto import WilliamsOttoReactor, WilliamsOttoReactorSimplified
 
 
 model = SemiBatchReactor(k=[0.053, 0.128, 0.0, 0.0, 5])
@@ -26,7 +28,7 @@ def run_rto(n_experiments, n_iterations, data_array, solver, db_file, neighbors,
         u, y, measurements = data_array[i]
         initial_data = Bunch(u=u, y=y, measurements=measurements)
         # build the model-based optimization problem
-        opt_problem = ModelBasedBayesianOptimizer(
+        opt_problem = ModifierAdaptationOptimizer(
             x_ub, x_lb, g_plant, solver=solver, backoff=backoff)
 
         # initial_data_normalized = [opt_problem.normalize_input(uk) for uk in initial_data[0]]
