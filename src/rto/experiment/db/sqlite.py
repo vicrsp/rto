@@ -134,6 +134,14 @@ def create_rto_db(database):
                                     PRIMARY KEY (run_id, var_name, timestamp, sim_type),
                                     FOREIGN KEY (run_id) REFERENCES run (id)
                                 );"""
+    
+    sql_create_model_values = """CREATE TABLE IF NOT EXISTS model_values (
+                                    run_id integer REFERENCES run (id) ON DELETE CASCADE,
+                                    model_name text,
+                                    value blob,
+                                    PRIMARY KEY (run_id, model_name),
+                                    FOREIGN KEY (run_id) REFERENCES run (id)
+                                );"""
 
     # create a database connection
     conn = create_connection(database)
@@ -150,6 +158,7 @@ def create_rto_db(database):
         create_table(conn, sql_create_result_variable)
         create_table(conn, sql_create_result_values)
         create_table(conn, sql_create_simulation_values)
+        create_table(conn, sql_create_model_values)
         init_data(conn)
     else:
         print("Error! cannot create the database connection.")

@@ -4,7 +4,6 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from warnings import catch_warnings
 from warnings import simplefilter
-
 from .base import AdaptationResult, AdaptationStrategy
 
 class MAGaussianProcesses(AdaptationStrategy):
@@ -17,6 +16,7 @@ class MAGaussianProcesses(AdaptationStrategy):
         self.k_neighbors = k_neighbors
         self.neighbors_type = neighbors_type
         self.filter_data = filter_data
+        self.filter_data_threshold = 0.01
 
     def get_adaptation(self, u, return_std=False):
         return AdaptationResult({'modifiers': self.get_modifiers(u, return_std)})
@@ -58,7 +58,7 @@ class MAGaussianProcesses(AdaptationStrategy):
             outputs[:, col].reshape(-1, 1)) for col in range(cols)]
     
     def train(self, X, y):
-        gp_model = GaussianProcessRegressor(normalize_y=True)
+        gp_model = GaussianProcessRegressor(normalize_y=True, n_restarts_optimizer=10)
         return gp_model.fit(X, y)
 
     def get_modifiers(self, u, return_std=True):
@@ -80,17 +80,17 @@ class MAGaussianProcesses(AdaptationStrategy):
 
     def update_gp_data(self, u, samples, neighbors_size):
         if(self.filter_data == True):
-            # if filter is on, only append new data to the model is sufficiently far from
+            # if filter is on, only append new data to the model is sufficiently far
             X = np.array(self.u_k)
             nbrs = NearestNeighbors(
                 n_neighbors=neighbors_size, algorithm='ball_tree').fit(X)
             distances, _ = nbrs.kneighbors(u.reshape(1,-1))
             # if there is at least one operating point below the threshold
             # then we should be able to ignore the new data
-            if(np.all(distances > 0.01)):
+            valid_distances = distances > self.filter_data_threshold
+            if(np.all(valid_distances)):
                 self.u_k.append(u)
                 self.samples_k.append(samples)
-
         else:
             self.u_k.append(u)
             self.samples_k.append(samples)
@@ -114,3 +114,4 @@ class MAGaussianProcesses(AdaptationStrategy):
                 u_train = np.asarray(self.u_k)
                 y_train = np.asarray(self.samples_k)
         return u_train,y_train
+

@@ -52,3 +52,6 @@ class ExperimentAnalyzer:
         ax.set_title(title)
         fig.show()
         return ax, fig
+    
+    def load_run_models(self, run_id):
+        return self.md.get_run_models(run_id)

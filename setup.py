@@ -17,7 +17,8 @@ setup(
                       'seaborn',
                       'sklearn',
                       'bunch',
-                      'scipy'
+                      'scipy',
+                      'smt'
                       ],
     classifiers=[
         'Development Status :: 1 - Planning',
