@@ -14,7 +14,8 @@ class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
         self.backoff = backoff  # %
         self.c_delta = 0.01
 
-    def _ei_acquisition(self, f_model, adaptation, f_best):
+    @staticmethod
+    def ei_acquisition(f_model, adaptation, f_best):
         # calculate the expected improvement (EI) objective
         f_mod, std_mod = adaptation.modifiers[0]
         f_mod, std_mod = float(f_mod), float(std_mod)
@@ -29,8 +30,9 @@ class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
 
         return ei_fobj
     
-    def _constraint_probability(self, g_model, adaptation):
-        probs = np.array([norm.cdf((self.g[i] - (g_model[i] + float(mean_g)))/float(std_g)) for i, (mean_g, std_g) in enumerate(adaptation.modifiers[1:])])
+    @staticmethod
+    def constraint_probability(g, g_model, adaptation):
+        probs = np.array([norm.cdf((g[i] - (g_model[i] + float(mean_g)))/float(std_g)) for i, (mean_g, std_g) in enumerate(adaptation.modifiers[1:])])
         return probs
 
     def _get_eic_function(self, process_model, adaptation_strategy, f_best):
@@ -39,12 +41,12 @@ class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
             g_model = process_model.get_constraints(x).reshape(-1,)
             f_model = process_model.get_objective(x)
             # calculate the expected improvement with constraints (EIC) 
-            probs = self._constraint_probability(g_model, adaptation)
+            probs = ModelBasedBayesianOptimizer.constraint_probability(self.g, g_model, adaptation)
             ei_constraints = np.prod(probs)
             # when no feasible solution was found yet, guide the search using the constraints only
             if f_best is None:
                 return -ei_constraints
-            ei_fobj = self._ei_acquisition(f_model, adaptation, f_best)
+            ei_fobj = ModelBasedBayesianOptimizer.ei_acquisition(f_model, adaptation, f_best)
             return -ei_constraints * ei_fobj
         return eic
 
@@ -63,7 +65,9 @@ class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
         elif(self.solver == 'nm'):
             result = minimize(func, x0, method='Nelder-Mead',
                               bounds=bounds, options={'disp': False, 'fatol': 1e-10, 'maxiter': 1000})
-                              
+        elif(self.solver == 'sqp'):
+            result = minimize(func, x0, method='SLSQP',
+                              bounds=bounds, options={'disp': False, 'ftol': 1e-10, 'maxiter': 1000})                          
         return result
     
     def _get_solution(self, result):

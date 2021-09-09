@@ -6,12 +6,12 @@ from bunch import Bunch
 import sys
 sys.path.append('/home/victor/git/rto/src')
 
-from rto.rto import RTO
+from rto.rto import RTO, RTOBayesian
 from rto.optimization.optimizer import ModelBasedOptimizer, ModifierAdaptationOptimizer
 from rto.optimization.bayesian import ModelBasedBayesianOptimizer
 from rto.adaptation.ma_gaussian_processes_trust_region import MAGaussianProcesses, MAGaussianProcessesTrustRegion
 from rto.models.semi_batch import SemiBatchReactor
-from rto.utils import generate_samples_uniform
+from rto.utils import generate_samples_uniform, generate_samples_lhs
 from rto.models.williams_otto import WilliamsOttoReactor, WilliamsOttoReactorSimplified
 
 
@@ -28,20 +28,19 @@ def run_rto(n_experiments, n_iterations, data_array, solver, db_file, neighbors,
         u, y, measurements = data_array[i]
         initial_data = Bunch(u=u, y=y, measurements=measurements)
         # build the model-based optimization problem
-        opt_problem = ModifierAdaptationOptimizer(
+        opt_problem = ModelBasedBayesianOptimizer(
             x_ub, x_lb, g_plant, solver=solver, backoff=backoff)
 
         # initial_data_normalized = [opt_problem.normalize_input(uk) for uk in initial_data[0]]
         # build the adaptation model
         adaptation = MAGaussianProcesses(
-            model, initial_data, ub=x_ub, lb=x_lb, filter_data=True, neighbors_type=neighbors)
+            model, initial_data, ub=x_ub, lb=x_lb, filter_data=False, neighbors_type=neighbors)
 
         u_0_feas = u[-1]
-        rto = RTO(model, plant, opt_problem, adaptation,
+        rto = RTOBayesian(model, plant, opt_problem, adaptation,
                   iterations=n_iterations, db_file=db_file, name=exp_name, noise=noise)
 
         rto.run(u_0_feas)
-
 
 # loads the experiment config
 with open('/home/victor/git/rto/tests/rto_magp.yaml') as f:

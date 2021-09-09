@@ -33,6 +33,7 @@ class RTO:
         u_previous = u_0
         rto_id = self._initialize()
         initial_data_size = len(self.adaptation_strategy.initial_data.u)
+        best_plant_objective = self._get_best_initial_solution()
 
         for i in range(self.iterations):
             iteration = i + initial_data_size
@@ -46,6 +47,10 @@ class RTO:
             run_id = self.experiment.save_results(rto_id, iteration, fr, gr, fm, gm, u_current, opt_feasible, opt_time, n_fev)
             # Save the trained models
             self._save_models(run_id)
+            # save the best plant solution
+            self._save_best_plant_solution(best_plant_objective, run_id)
+            # Update the best solution
+            best_plant_objective = self._update_best_solution(best_plant_objective, fr, gr)
             # Get GP training data
             data = self._get_training_data(fr, fm, gr, gm)
             # Execute the adaptation strategy
@@ -54,6 +59,14 @@ class RTO:
             u_previous = u_current
            
         return rto_id
+
+    def _save_best_plant_solution(self, best_plant_objective, run_id):
+        self.experiment.save_run_results(run_id, {'best_plant_objective': best_plant_objective})
+
+    def _update_best_solution(self, current_best, fr, gr, variances=None):
+        if((fr < current_best) & np.all(gr <= self.optimization_problem.g)):
+            return fr
+        return current_best
 
     def _get_training_data(self, fr, fm, gr, gm):
         data = np.append(np.asarray(fr - fm), gr - gm)
@@ -93,6 +106,19 @@ class RTO:
         rto_id = self.experiment.create_rto()        
         self.experiment.save_initial_data(self.adaptation_strategy.initial_data, rto_id)
         return rto_id
+    
+    def _get_best_initial_solution(self):
+        measurements = self.adaptation_strategy.initial_data.measurements
+        g = self.optimization_problem.g
+        fr, gr = measurements[:, 0], measurements[:, 1]
+        # find feasible points
+        feasible_points = [np.all(gri <= g) for gri in gr]
+        if np.all(feasible_points == False): 
+            logging.warning('Initial points are all unfeasible. The optimizer will be guided by feasibility only.')
+            return None
+        # then the best one among them
+        best_plant_objective = np.min(fr[feasible_points])
+        return best_plant_objective
 
 
 class RTOBayesian(RTO):
@@ -122,7 +148,7 @@ class RTOBayesian(RTO):
             # save the models
             self._save_models(run_id)
             # save the best plant solution
-            self.save_best_plant_solution(best_plant_objective, run_id)
+            self._save_best_plant_solution(best_plant_objective, run_id)
             # Update the best solution
             best_plant_objective = self._update_best_solution(best_plant_objective, fr, gr)
             # Execute the adaptation strategy
@@ -131,22 +157,6 @@ class RTOBayesian(RTO):
             u_previous = u_current
            
         return rto_id
-
-    def save_best_plant_solution(self, best_plant_objective, run_id):
-        self.experiment.save_run_results(run_id, {'best_plant_objective': best_plant_objective})
-
-    def _get_best_initial_solution(self):
-        measurements = self.adaptation_strategy.initial_data.measurements
-        g = self.optimization_problem.g
-        fr, gr = measurements[:, 0], measurements[:, 1]
-        # find feasible points
-        feasible_points = [np.all(gri <= g) for gri in gr]
-        if np.all(feasible_points == False): 
-            logging.warning('Initial points are all unfeasible. The optimizer will be guided by feasibility only.')
-            return None
-        # then the best one among them
-        best_plant_objective = np.min(fr[feasible_points])
-        return best_plant_objective
 
     def _update_best_solution_known_variances(self, current_best, fr, gr, variances):
         var_f, var_g = variances

@@ -30,7 +30,7 @@ def generate_samples_lhs(model, plant, plant_constrains, u_0, size=30, offset=0.
         fm, gm = model.get_objective(sample), model.get_constraints(sample)
         u_initial.append(sample)
         y_initial.append(np.append(fr - fm, gr - gm))
-        meas_initial.append(np.array([fr, gr, fm, gm], dtype=object))
+        meas_initial.append(np.array([fr, gr, fm, gm]))
     
     return [np.asarray(u_initial), np.asarray(y_initial), np.asarray(meas_initial)]
     # return generate_samples(model, plant, plant_constrains, u_0, rand_func, size)
@@ -53,7 +53,7 @@ def generate_samples(model, plant, plant_constrains, u_0, random_func, size, noi
         if(np.any(gr - plant_constrains > 0) == False):
             u_initial.append(u_rand)
             y_initial.append(np.append(fr - fm, gr - gm))
-            meas_initial.append(np.array([fr, gr, fm, gm]))
+            meas_initial.append(np.array([fr, gr, fm, gm], dtype=object))
             i = i + 1
 
     return [np.asarray(u_initial), np.asarray(y_initial), np.asarray(meas_initial)]
