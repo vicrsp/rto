@@ -38,9 +38,9 @@ class RTO:
         for i in range(self.iterations):
             iteration = i + initial_data_size
             # Solve the model-based optimization problem
-            u_current, opt_time, n_fev = self._solve_optimization_problem(u_current)
+            u_opt, opt_time, n_fev = self._solve_optimization_problem(u_current)
             # Define the next operating point
-            u_current, opt_feasible = self._define_next_operating_point(u_current, u_previous)
+            u_current, opt_feasible = self._define_next_operating_point(u_opt, u_previous)
             # Calculate the results
             fr, gr, fm, gm = self._calculate_results(u_current)
             # Save the results
@@ -49,6 +49,8 @@ class RTO:
             self._save_models(run_id)
             # save the best plant solution
             self._save_best_plant_solution(best_plant_objective, run_id)
+            # Save the optimizer solution
+            self._save_optimizer_solution(u_opt, run_id)
             # Update the best solution
             best_plant_objective = self._update_best_solution(best_plant_objective, fr, gr)
             # Get GP training data
@@ -62,6 +64,9 @@ class RTO:
 
     def _save_best_plant_solution(self, best_plant_objective, run_id):
         self.experiment.save_run_results(run_id, {'best_plant_objective': best_plant_objective})
+
+    def _save_optimizer_solution(self, u_opt, run_id):
+        self.experiment.save_run_results(run_id, {'u_opt': ','.join(str(v) for v in u_opt)})
 
     def _update_best_solution(self, current_best, fr, gr, variances=None):
         if((fr < current_best) & np.all(gr <= self.optimization_problem.g)):
@@ -136,9 +141,9 @@ class RTOBayesian(RTO):
         for i in range(self.iterations):
             iteration = i + initial_data_size
             # Solve the model-based optimization problem
-            u_current, opt_time, n_fev = self._solve_optimization_problem(u_current, best_plant_objective)
+            u_opt, opt_time, n_fev = self._solve_optimization_problem(u_current, best_plant_objective)
             # Define the next operating point
-            u_current, opt_feasible = self._define_next_operating_point(u_current, u_previous)
+            u_current, opt_feasible = self._define_next_operating_point(u_opt, u_previous)
             # Calculate the results
             fr, gr, fm, gm = self._calculate_results(u_current)
             # Get GP training data
@@ -149,6 +154,8 @@ class RTOBayesian(RTO):
             self._save_models(run_id)
             # save the best plant solution
             self._save_best_plant_solution(best_plant_objective, run_id)
+             # Save the optimizer solution
+            self._save_optimizer_solution(u_opt, run_id)
             # Update the best solution
             best_plant_objective = self._update_best_solution(best_plant_objective, fr, gr)
             # Execute the adaptation strategy

@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from math import isnan
 
 class ExperimentAnalyzer:
     def __init__(self, db_file):
@@ -25,6 +26,7 @@ class ExperimentAnalyzer:
         results_pv[['cost_model','cost_real','fobj_modifier', 'opt_time']] = results_pv[['cost_model','cost_real','fobj_modifier','opt_time']].astype('float')
         # Get the inputs
         results_pv['u'] = results_pv['u'].apply(lambda x: np.array([float(xi) for xi in x.split(',')]))
+        results_pv['u_opt'] = results_pv['u_opt'].apply(lambda x: np.array([float(xi) if xi else np.NaN for xi in str(x).split(',')]))
 
         # Extract some variables
         results_pv['g_0'] = results_pv['g_real'].apply(lambda x: float(x.split(',')[0])) 
