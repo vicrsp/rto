@@ -120,3 +120,52 @@ class WilliamsOttoReactorSimplified(ProcessModel):
             g = g * (1 + np.random.normal(scale=noise))
 
         return g
+
+class WilliamsOttoReactor_CamelHump(WilliamsOttoReactor):
+    def __init__(self):
+        super().__init__()
+        self.name = 'Williams-Otto (Three Camel Hump)'
+
+    def get_objective(self, u, noise=None):
+        Fa = 1.8275
+        Fb, Tr = u
+        _, _, _, xp, xe, _ = self.solve_steady_state(u)
+        # xp: 0.08 - 0.12
+        # xe: 0.185 - 0.35
+        x, y = 5*(xp - 0.084)/(0.12 - 0.084)-2, 5*(xe - 0.187)/(0.3490 - 0.187)-2
+        fx = -(2*x**2 - 1.05*x**4 + (1/6)*x**6 + y*x + y**2)
+        return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
+
+    
+class WilliamsOttoReactor_Branin(WilliamsOttoReactor):
+    def __init__(self):
+        super().__init__()
+        self.name = 'Williams-Otto (Branin)'
+
+    def get_objective(self, u, noise=None):
+        _, _, _, xp, xe, _ = self.solve_steady_state(u)
+        y, x = 15*(xp - 0.084)/(0.12 - 0.084)-5, 15*(xe - 0.187)/(0.3490 - 0.187)
+        fx = float(np.square(y - (4.8/(4*np.square(np.pi)))*np.square(x) + (5/np.pi)*x- 6) + 10*(1-(1./(8*np.pi)))*np.cos(x) + 10)
+        return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
+
+class WilliamsOttoReactorSimplified_Branin(WilliamsOttoReactorSimplified):
+    def __init__(self):
+        super().__init__()
+        self.name = 'Williams-Otto Simplified (Branin)'
+
+    def get_objective(self, u, noise=None):
+        _, _, xp, xe, _ = self.solve_steady_state(u)        
+        y, x = 15*(xp - 0.084)/(0.12 - 0.084)-5, 15*(xe - 0.187)/(0.3490 - 0.187)
+        fx = float(np.square(y - (4.8/(4*np.square(np.pi)))*np.square(x) + (5/np.pi)*x- 6) + 10*(1-(1./(8*np.pi)))*np.cos(x) + 10)
+        return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
+
+class WilliamsOttoReactorSimplified_CamelHump(WilliamsOttoReactorSimplified):
+    def __init__(self):
+        super().__init__()
+        self.name = 'Williams-Otto Simplified (Three Camel Hump)'
+
+    def get_objective(self, u, noise=None):
+        _, _, xp, xe, _ = self.solve_steady_state(u)
+        x, y = 5*(xp - 0.084)/(0.12 - 0.084)-2, 5*(xe - 0.187)/(0.3490 - 0.187)-2
+        fx = -(2*x**2 - 1.05*x**4 + (1/6)*x**6 + y*x + y**2)
+        return fx if noise == None else fx * (1 + np.random.normal(scale=noise))
