@@ -61,13 +61,13 @@ class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
     def _solve_nlp(self, bounds, x0, func):
         if(self.solver == 'de'):
             result = differential_evolution(
-                func, bounds, maxiter=1000, atol=1e-10, polish=False, **self.solver_params)
+                func, bounds, maxiter=1000, atol=1e-6, polish=False, **self.solver_params)
         elif(self.solver == 'nm'):
             result = minimize(func, x0, method='Nelder-Mead',
-                              bounds=bounds, options={'disp': False, 'fatol': 1e-10, 'maxiter': 1000})
+                              bounds=bounds, options={'disp': False, 'fatol': 1e-6, 'maxiter': 1000})
         elif(self.solver == 'sqp'):
             result = minimize(func, x0, method='SLSQP',
-                              bounds=bounds, options={'disp': False, 'ftol': 1e-10, 'maxiter': 1000})                          
+                              bounds=bounds, options={'disp': False, 'ftol': 1e-6, 'maxiter': 1000})                          
         return result
     
     def _get_solution(self, result):

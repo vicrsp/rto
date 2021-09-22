@@ -37,10 +37,10 @@ class ModelBasedOptimizer:
         nlc = self._get_nlc(constraints)
         if(self.solver == 'de'):
             result = differential_evolution(
-                func, bounds, maxiter=1000, atol=0.0001, polish=False, constraints=nlc, **self.solver_params)
+                func, bounds, maxiter=1000, atol=1e-6, polish=False, constraints=nlc, **self.solver_params)
         elif(self.solver == 'sqp'):
             result = minimize(func, x0, method='SLSQP',
-                              bounds=bounds, constraints=nlc, options={'disp': False, 'ftol': 0.0001, 'maxiter': 1000})
+                              bounds=bounds, constraints=nlc, options={'disp': False, 'ftol': 1e-6, 'maxiter': 1000})
                               
         return result
     
