@@ -58,7 +58,7 @@ class MAGaussianProcesses(AdaptationStrategy):
             outputs[:, col].reshape(-1, 1)) for col in range(cols)]
     
     def train(self, X, y):
-        gp_model = GaussianProcessRegressor(normalize_y=True, n_restarts_optimizer=10)
+        gp_model = GaussianProcessRegressor(normalize_y=True)
         return gp_model.fit(X, y)
 
     def get_modifiers(self, u, return_std=True):

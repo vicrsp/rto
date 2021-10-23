@@ -45,10 +45,10 @@ class ExperimentAnalyzer:
 
         return results_pv
     
-    def plot_by_iteration(self, data, y, ylabel, title='', style=None, hue='run.status'):
+    def plot_by_iteration(self, data, y, ylabel, title='', style=None, hue='run.status', xlabel='Iteration'):
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.lineplot(data=data, y=y, x='iteration', hue=hue, style=style, ax=ax, palette='Set1', seed=1234, legend=True)
-        ax.set_xlabel('Iteration')
+        ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.get_legend().set_title('')
         ax.set_title(title)
