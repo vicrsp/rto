@@ -1,0 +1,14 @@
+adaptation: 'MAGPTR'
+db_file: '/home/victor/git/rto/tests/test.db'
+repetitions: 30
+rto_iterations: 60
+initial_data_size: 5
+initial_data_noise: 0.00
+configs:
+  de:
+    name: 'DE'
+    solver: 
+      name: 'de'
+    neighbors: 'k_last'
+    noise: 0.00
+    backoff: 0.0

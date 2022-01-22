@@ -1,7 +1,7 @@
 from .db.sqlite import create_connection, create_rto_db
 import datetime
 from sqlite3 import IntegrityError
-
+import pickle
 
 class RTODataModel:
     def __init__(self, file):
@@ -53,6 +53,17 @@ class RTODataModel:
 
         cur.executemany(
             'INSERT INTO sample_values VALUES (?,?,?,?,?)', run_samples)
+        self.conn.commit()
+
+    def save_models(self, run_id, models):
+        cur = self.conn.cursor()
+        run_models = []
+        for rdv_id, value in models.items():
+            # converts each model into a blob
+            run_models.append((run_id, rdv_id, pickle.dumps(value)))
+
+        cur.executemany(
+            'INSERT INTO model_values VALUES (?,?,?)', run_models)
         self.conn.commit()
 
     def save_parameters(self, run_id, parameters):
@@ -161,5 +172,17 @@ class RTODataModel:
         results = []
         for row in db_results:
             results.append(list(row))
+
+        return results
+
+    def get_run_models(self, run_id):
+        cur = self.conn.cursor()
+        sql = 'SELECT model_name, value from model_values where run_id = ?'
+        cur.execute(sql, (run_id,))
+        db_results = cur.fetchall()
+        results = {}
+        # loads each blob to the model original object
+        for model_name, value in db_results:
+            results[model_name] = pickle.loads(value)
 
         return results
