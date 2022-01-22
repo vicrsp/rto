@@ -15,7 +15,7 @@ class ExperimentAnalyzer:
     def load_by_id(self, id):
        return pd.DataFrame(self.md.get_rto_experiment_results_by_id(id), columns=['rto.id', 'rto.name', 'rto.type', 'run.id', 'run.status', 'iteration', 'var_name', 'value'])
 
-    def pre_process(self, results, f_plant=None, u_plant=None):
+    def pre_process(self, results, f_plant=None, u_plant=None, g_plant=None):
         def aggfunc(x):
             return x
         # Transform the data
@@ -23,7 +23,7 @@ class ExperimentAnalyzer:
         results_pv.reset_index(level=results_pv.index.names, inplace=True)
         
         # Convert the values
-        results_pv[['cost_model','cost_real','fobj_modifier', 'opt_time']] = results_pv[['cost_model','cost_real','fobj_modifier','opt_time']].astype('float')
+        results_pv[['cost_model','cost_real','fobj_modifier', 'opt_time', 'best_plant_objective']] = results_pv[['cost_model','cost_real','fobj_modifier','opt_time', 'best_plant_objective']].astype('float')
         # Get the inputs
         results_pv['u'] = results_pv['u'].apply(lambda x: np.array([float(xi) for xi in x.split(',')]))
         results_pv['u_opt'] = results_pv['u_opt'].apply(lambda x: np.array([float(xi) if xi else np.NaN for xi in str(x).split(',')]))
@@ -42,6 +42,11 @@ class ExperimentAnalyzer:
         
         if(f_plant is not None):
             results_pv['dPhi'] = results_pv[['cost_real']].apply(lambda x: 100 * np.abs((x - f_plant)/f_plant))
+            results_pv['dBest'] = results_pv[['best_plant_objective']].apply(lambda x: 100 * np.abs((x - f_plant)/f_plant))
+
+        if(g_plant is not None):
+            results_pv['dg0'] = results_pv[['g_0']].apply(lambda x: 100 * ((x - g_plant[0])))
+            results_pv['dg1'] = results_pv[['g_1']].apply(lambda x: 100 * ((x - g_plant[1])))
 
         return results_pv
     
@@ -54,6 +59,7 @@ class ExperimentAnalyzer:
         ax.set_title(title)
         fig.show()
         return ax, fig
-    
+
+
     def load_run_models(self, run_id):
         return self.md.get_run_models(run_id)
