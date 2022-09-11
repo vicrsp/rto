@@ -3,6 +3,7 @@ from scipy.optimize import differential_evolution, minimize
 from scipy.stats import norm
 
 from rto.optimization.optimizer import ModelBasedOptimizer
+from rto.optimization.solvers.hybrid import hybrid_minimize
 
 class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
     def __init__(self, ub, lb, g, solver={'name': 'de', 'params': {'strategy': 'best1bin'}}, backoff=0.00):
@@ -68,11 +69,13 @@ class ModelBasedBayesianOptimizer(ModelBasedOptimizer):
         elif(self.solver == 'sqp'):
             result = minimize(func, x0, method='SLSQP',
                               bounds=bounds, options={'disp': False, 'ftol': 1e-6, 'maxiter': 1000})                          
+        elif(self.solver == 'hybrid'):
+            result = hybrid_minimize(func, x0, bounds, self.solver_params.pop('max_iter_init', 50), **self.solver_params)
         return result
     
     def _get_solution(self, result):
         # check for feasibility
-        if(result.success == False):
+        if(result.success is False):
             return None, [], result.nfev
         else:
             return result.fun, result.x, result.nfev

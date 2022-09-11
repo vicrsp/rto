@@ -5,14 +5,14 @@ from .experiment.results_handler import ExperimentResultsHandler
 from scipy.stats import norm
 
 class RTO:
-    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp', noise=0.01):
+    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations=10, db_file='/mnt/d/rto_data/rto_test.db', name='ma-gp', noise=0.01, k_filter=0.4):
         self.experiment = ExperimentResultsHandler(name, db_file)
         self.iterations = iterations
         self.optimization_problem = optimization_problem
         self.adaptation_strategy = adaptation_strategy
         self.process_model = process_model
         self.real_process = real_process
-        self.k_filter = 0.4
+        self.k_filter = k_filter
         self.noise_level = noise  # %
         self.name = name
 
@@ -127,8 +127,8 @@ class RTO:
 
 
 class RTOBayesian(RTO):
-    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations, name='bayesian', db_file='/mnt/d/rto_data/rto_test.db', noise=0.01):
-        super().__init__(process_model, real_process, optimization_problem, adaptation_strategy, iterations, db_file, name, noise)
+    def __init__(self, process_model, real_process, optimization_problem, adaptation_strategy, iterations, name='bayesian', db_file='/mnt/d/rto_data/rto_test.db', noise=0.01, k_filter=0.4):
+        super().__init__(process_model, real_process, optimization_problem, adaptation_strategy, iterations, db_file, name, noise, k_filter)
         self._delta_c = 0.01
 
     def run(self, u_0):

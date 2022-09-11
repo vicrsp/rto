@@ -26,16 +26,8 @@ class ExperimentAnalyzer:
         results_pv[['cost_model','cost_real','fobj_modifier', 'opt_time', 'best_plant_objective']] = results_pv[['cost_model','cost_real','fobj_modifier','opt_time', 'best_plant_objective']].astype('float')
         # Get the inputs
         results_pv['u'] = results_pv['u'].apply(lambda x: np.array([float(xi) for xi in x.split(',')]))
-        results_pv['u_opt'] = results_pv['u_opt'].apply(lambda x: np.array([float(xi) if xi else np.NaN for xi in str(x).split(',')]))
-
-        # Extract some variables
-        results_pv['g_0'] = results_pv['g_real'].apply(lambda x: float(x.split(',')[0])) 
-        results_pv['g_1'] = results_pv['g_real'].apply(lambda x: float(x.split(',')[1])) 
-        results_pv['g_0_model'] = results_pv['g_model'].apply(lambda x: float(x.split(',')[0])) 
-        results_pv['g_1_model'] = results_pv['g_model'].apply(lambda x: float(x.split(',')[1])) 
-        results_pv['g_0_modifiers'] = results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[0])) 
-        results_pv['g_1_modifiers'] = results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[1])) 
-
+        results_pv['u_opt'] = results_pv['u_opt'].apply(lambda x: np.array([float(xi) if xi else np.NaN for xi in str(x).split(',')]))        
+            
         # kpis
         if(u_plant is not None):
             results_pv['du'] = results_pv['u'].apply(lambda x: np.linalg.norm(100 * (x - u_plant)/u_plant))
@@ -44,9 +36,19 @@ class ExperimentAnalyzer:
             results_pv['dPhi'] = results_pv[['cost_real']].apply(lambda x: 100 * np.abs((x - f_plant)/f_plant))
             results_pv['dBest'] = results_pv[['best_plant_objective']].apply(lambda x: 100 * np.abs((x - f_plant)/f_plant))
 
+        # process the constraints
         if(g_plant is not None):
-            results_pv['dg0'] = results_pv[['g_0']].apply(lambda x: 100 * ((x - g_plant[0])))
-            results_pv['dg1'] = results_pv[['g_1']].apply(lambda x: 100 * ((x - g_plant[1])))
+            if len(g_plant) == 1:
+                results_pv['g_0'] = results_pv['g_real']
+                results_pv['g_0_model'] = results_pv['g_model']
+                results_pv['g_0_modifiers'] = results_pv['g_modifiers']
+                results_pv['dg0'] = results_pv[['g_0']].apply(lambda x: 100 * ((x - g_plant[0])))
+            else:
+                for i in range(len(g_plant)):
+                    results_pv[f'g_{i}'] = results_pv['g_real'].apply(lambda x: float(x.split(',')[i])) 
+                    results_pv[f'g_{i}_model'] = results_pv['g_model'].apply(lambda x: float(x.split(',')[i])) 
+                    results_pv[f'g_{i}_modifiers'] = results_pv['g_modifiers'].apply(lambda x: float(x.split(',')[i])) 
+                    results_pv[f'dg{i}'] = results_pv[[f'g_{i}']].apply(lambda x: 100 * ((x - g_plant[i])))
 
         return results_pv
     
